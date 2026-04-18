@@ -76,6 +76,131 @@ def test_parse_batch_group_callback_messages() -> None:
     assert parsed.messages[0].at_list == ("bot", "ops")
     assert parsed.messages[1].message_type == 5
     assert parsed.messages[1].text == ""
+    assert parsed.messages[1].attachment_kind == "image"
+    assert parsed.messages[1].download_url == "https://example.test/a.jpg"
+
+
+def test_parse_file_callback_message_extracts_attachment_metadata() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "type": "callback",
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NOTIFY_NEW_MESSAGE,
+                "data": {
+                    "msg_type": 8,
+                    "content": json.dumps(
+                        {
+                            "data": {
+                                "file": {
+                                    "file_name": "report.pdf",
+                                    "file_id": "file-id",
+                                    "file_key": "file-key",
+                                    "file_size": 1234,
+                                    "file_md5": "md5",
+                                    "aes_key": "aes",
+                                    "auth_key": "auth",
+                                    "url": "https://cdn.example/report",
+                                }
+                            }
+                        }
+                    ),
+                    "sender": "1001",
+                    "msg_id": "msg-file-1",
+                },
+            },
+        }
+    )
+
+    assert parsed is not None
+    message = parsed.messages[0]
+    assert message.text == ""
+    assert message.attachment_kind == "document"
+    assert message.file_name == "report.pdf"
+    assert message.file_id == "file-id"
+    assert message.file_key == "file-key"
+    assert message.file_size == 1234
+    assert message.file_md5 == "md5"
+    assert message.aes_key == "aes"
+    assert message.auth_key == "auth"
+    assert message.download_url == "https://cdn.example/report"
+    assert message.mime_type == "application/pdf"
+
+
+def test_parse_voice_and_video_callbacks_extract_attachment_kind() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "type": "callback",
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NOTIFY_BATCH_NEW_MESSAGE,
+                "data": [
+                    {
+                        "msg_type": 6,
+                        "content": {"voice": {"file_name": "voice.amr", "url": "https://cdn.example/voice"}},
+                        "sender": "1001",
+                        "msg_id": "voice-1",
+                    },
+                    {
+                        "msg_type": 7,
+                        "content": {"video": {"file_name": "clip.mp4", "url": "https://cdn.example/video"}},
+                        "sender": "1001",
+                        "msg_id": "video-1",
+                    },
+                ],
+            },
+        }
+    )
+
+    assert parsed is not None
+    assert parsed.messages[0].attachment_kind == "audio"
+    assert parsed.messages[0].file_name == "voice.amr"
+    assert parsed.messages[0].mime_type == "audio/amr"
+    assert parsed.messages[1].attachment_kind == "video"
+    assert parsed.messages[1].file_name == "clip.mp4"
+    assert parsed.messages[1].mime_type == "video/mp4"
+
+
+def test_parse_image_callback_extracts_cdn_file_id_as_download_url() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "type": "callback",
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NOTIFY_NEW_MESSAGE,
+                "data": {
+                    "msg_type": 5,
+                    "content_type": 101,
+                    "sender": "1001",
+                    "id": "img-1",
+                    "file_name": "",
+                    "cdn": {
+                        "size": 224064,
+                        "md5": "7beaa9362d4d75a5553303f727efe9b0",
+                        "aes_key": "aes",
+                        "is_hd": False,
+                        "auth_key": "auth",
+                        "file_id": "https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=abc",
+                        "ld_file_id": "https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=ld",
+                        "image_width": 225,
+                        "image_height": 503,
+                    },
+                },
+            },
+        }
+    )
+
+    assert parsed is not None
+    message = parsed.messages[0]
+    assert message.attachment_kind == "image"
+    assert message.download_url == "https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=abc"
+    assert message.file_name == "image.jpg"
+    assert message.file_size == 224064
+    assert message.file_md5 == "7beaa9362d4d75a5553303f727efe9b0"
+    assert message.aes_key == "aes"
+    assert message.auth_key == "auth"
+    assert message.mime_type == "image/jpeg"
+    assert message.is_hd is False
 
 
 def test_parse_callback_envelope_returns_none_for_empty_or_malformed_payload() -> None:

@@ -25,6 +25,18 @@ async def get_wwfile_auth_key(
     )
 
 
+async def get_wwfile_download_info(
+    client: QwSaasClient,
+    file_id: str,
+) -> dict[str, Any]:
+    if not file_id:
+        raise QwSaasRequestError("file_id is required")
+    return await client._request_public(
+        "/cdn/get_wwfile_download_info",
+        data={"file_id": file_id},
+    )
+
+
 async def c2c_to_wwfile_id(
     client: QwSaasClient,
     file_id: str,

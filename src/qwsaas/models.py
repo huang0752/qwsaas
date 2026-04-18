@@ -29,6 +29,18 @@ class JuheCallbackMessage:
     is_self_echo: bool
     raw_message: dict[str, Any]
     raw_event: dict[str, Any]
+    attachment_kind: str | None = None
+    file_name: str | None = None
+    file_id: str | None = None
+    file_key: str | None = None
+    file_size: int | None = None
+    file_md5: str | None = None
+    aes_key: str | None = None
+    auth_key: str | None = None
+    download_url: str | None = None
+    mime_type: str | None = None
+    is_hd: bool | None = None
+    base_request: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -41,3 +53,12 @@ class JuheCallbackEnvelope:
     messages: tuple[JuheCallbackMessage, ...]
     raw_event: dict[str, Any]
     raw_envelope: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class DownloadedAttachment:
+    """Downloaded callback attachment bytes with normalized metadata."""
+
+    data: bytes
+    file_name: str
+    content_type: str

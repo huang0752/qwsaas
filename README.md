@@ -51,6 +51,8 @@ export QWSAAS_CONVERSATION_ID="S:1001"
 
 `QWSAAS_PUBLIC_BASE_URL` is optional and defaults to `https://chat-api.juhebot.com`.
 `QWSAAS_PRIVATE_BASE_URL` is required only for private upload flows.
+Juhe's private upload API accepts externally reachable `http(s)` URLs; it does
+not read local filesystem paths directly.
 
 ## Quick Start
 
@@ -97,6 +99,10 @@ if __name__ == "__main__":
 - `send_big_file_from_url(client, conversation_id, file_url, file_name, file_type=5)`
 - `JuheWsClient`
 - `parse_callback_envelope(payload)`
+
+File-upload helpers require `file_url` to be an externally reachable `http(s)`
+URL. If you need to send a local file, expose it through your own file service
+first and pass that URL into the SDK.
 
 ## Tests
 

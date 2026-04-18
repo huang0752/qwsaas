@@ -2,6 +2,9 @@
 
 All examples use placeholders or environment variables. Do not commit real app keys, app secrets, GUIDs, upload URLs, or customer conversation IDs.
 
+Juhe private upload endpoints accept externally reachable `http(s)` URLs. They
+do not fetch local filesystem paths directly.
+
 ## Public GuidRequest Shape
 
 ```json

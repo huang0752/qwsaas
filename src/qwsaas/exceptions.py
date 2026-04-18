@@ -29,6 +29,21 @@ class QwSaasResponseError(QwSaasError):
     """Response body parsing errors."""
 
 
+class QwSaasPrivateObjectAccessError(QwSaasResponseError):
+    """Resolved private object URL requires authenticated object storage access."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        object_url: str,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.object_url = object_url
+        self.status_code = status_code
+
+
 class QwSaasApiError(QwSaasError):
     """API-level error (non-zero error_code)."""
 

@@ -1,32 +1,52 @@
 """Private QW SaaS SDK for Juhe enterprise WeChat integrations."""
 
 from .callbacks import NOTIFY_BATCH_NEW_MESSAGE, NOTIFY_NEW_MESSAGE, parse_callback_envelope
-from .cdn import c2c_to_wwfile_id, get_cdn_info, get_wwfile_auth_key
+from .cdn import c2c_to_wwfile_id, get_cdn_info, get_wwfile_auth_key, get_wwfile_download_info
 from .client import QwSaasClient
+from .contacts import batch_get_userinfo, search_contact, sync_contact
 from .exceptions import (
     ErrorCode,
     QwSaasApiError,
     QwSaasError,
     QwSaasHttpError,
+    QwSaasPrivateObjectAccessError,
     QwSaasRequestError,
     QwSaasResponseError,
 )
 from .file_flows import send_big_file_from_url, send_small_file_from_url
-from .messages import send_file, send_text
-from .models import JuheApiResponse, JuheCallbackEnvelope, JuheCallbackMessage
-from .rooms import get_room_list
+from .inbound_downloads import download_callback_attachment
+from .messages import (
+    confirm_msg,
+    report_unread,
+    revoke_msg,
+    send_file,
+    send_quote_msg,
+    send_room_at,
+    send_text,
+)
+from .models import DownloadedAttachment, JuheApiResponse, JuheCallbackEnvelope, JuheCallbackMessage
+from .rooms import batch_get_member_detail, batch_get_room_detail, get_room_list, sync_room_info
+from .sync import sync_msg, sync_multi_data
+from .tags import sync_label_list
 from .uploads import big_upload, c2c_upload
 from .ws import DEFAULT_WS_URL, JuheWsClient
 
 __all__ = [
     "DEFAULT_WS_URL",
     "big_upload",
+    "batch_get_member_detail",
+    "batch_get_room_detail",
+    "batch_get_userinfo",
     "c2c_to_wwfile_id",
     "c2c_upload",
+    "confirm_msg",
+    "download_callback_attachment",
+    "DownloadedAttachment",
     "ErrorCode",
     "get_cdn_info",
     "get_room_list",
     "get_wwfile_auth_key",
+    "get_wwfile_download_info",
     "JuheApiResponse",
     "JuheCallbackEnvelope",
     "JuheCallbackMessage",
@@ -37,11 +57,22 @@ __all__ = [
     "QwSaasClient",
     "QwSaasError",
     "QwSaasHttpError",
+    "QwSaasPrivateObjectAccessError",
     "QwSaasRequestError",
     "QwSaasResponseError",
     "parse_callback_envelope",
+    "report_unread",
+    "revoke_msg",
+    "search_contact",
     "send_big_file_from_url",
     "send_small_file_from_url",
     "send_file",
+    "send_quote_msg",
+    "send_room_at",
     "send_text",
+    "sync_contact",
+    "sync_label_list",
+    "sync_msg",
+    "sync_multi_data",
+    "sync_room_info",
 ]
