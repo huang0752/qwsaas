@@ -32,7 +32,7 @@ Future Hermes usage should pin a private Git tag or commit, for example:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.1.0",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.2.1",
 ]
 ```
 
@@ -88,15 +88,31 @@ if __name__ == "__main__":
 
 - `QwSaasClient`
 - `send_text(client, conversation_id, content)`
+- `send_room_at(client, conversation_id, content, at_list)`
 - `send_file(client, conversation_id, file_id, file_name, size, md5, aes_key=None)`
+- `send_quote_msg(client, ..., message)`
+- `confirm_msg(client, message_type, sender=..., receiver=..., msgid=..., roomid=None)`
+- `revoke_msg(client, conversation_id, msgid)`
+- `report_unread(client, conversation_id)`
+- `sync_contact(client, seq="", limit=10)`
+- `batch_get_userinfo(client, user_list)`
+- `search_contact(client, keyword, type=1)`
 - `get_room_list(client, start_index=0, limit=10)`
+- `batch_get_room_detail(client, room_list)`
+- `batch_get_member_detail(client, room_id, user_list)`
+- `sync_room_info(client, room_id, version=0)`
+- `sync_label_list(client, seq="", sync_type=2)`
+- `sync_multi_data(client, business_id=1, seq="", limit=10)`
+- `sync_msg(client, sync_key, limit=100)`
 - `get_cdn_info(client)`
 - `get_wwfile_auth_key(client, file_key, file_type)`
+- `get_wwfile_download_info(client, file_id)`
 - `c2c_to_wwfile_id(client, file_id, file_md5, file_size, file_key)`
 - `c2c_upload(client, base_request, file_type, url)`
 - `big_upload(client, appid, auth_key, base_request, file_key, url, guid=None)`
 - `send_small_file_from_url(client, conversation_id, file_url, file_name, file_type=5)`
 - `send_big_file_from_url(client, conversation_id, file_url, file_name, file_type=5)`
+- `download_callback_attachment(client, ...)`
 - `JuheWsClient`
 - `parse_callback_envelope(payload)`
 
