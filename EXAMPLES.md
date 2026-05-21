@@ -1,98 +1,135 @@
 # QWSAAS Examples
 
-All examples use placeholders or environment variables. Do not commit real app keys, app secrets, GUIDs, upload URLs, or customer conversation IDs.
+All examples use placeholders or environment variables. Do not commit real app keys, app secrets, GUIDs, signed URLs, storage keys, or customer conversation IDs.
 
-Juhe private upload endpoints accept externally reachable `http(s)` URLs. They
-do not fetch local filesystem paths directly.
+## Client
 
-## Public GuidRequest Shape
+```python
+import os
 
-```json
-{
-  "app_key": "<QWSAAS_APP_KEY>",
-  "app_secret": "<QWSAAS_APP_SECRET>",
-  "path": "/msg/send_text",
-  "data": {
-    "guid": "<QWSAAS_GUID>",
-    "conversation_id": "S:<contact-id-or-vid>",
-    "content": "hello"
-  }
-}
+from qwsaas import QwSaasClient, S3ObjectStorage
+
+client = QwSaasClient(
+    app_key=os.environ["QWSAAS_APP_KEY"],
+    app_secret=os.environ["QWSAAS_APP_SECRET"],
+    guid=os.environ["QWSAAS_GUID"],
+    public_base_url=os.environ.get("QWSAAS_PUBLIC_BASE_URL"),
+    private_base_url=os.environ.get("QWSAAS_PRIVATE_BASE_URL"),
+    storage=S3ObjectStorage.from_env(),
+)
 ```
 
 ## Send Text
 
 ```python
-import asyncio
-import os
-
-from qwsaas import QwSaasClient, send_text
-
-
-async def main() -> None:
-    client = QwSaasClient(
-        app_key=os.environ["QWSAAS_APP_KEY"],
-        app_secret=os.environ["QWSAAS_APP_SECRET"],
-        guid=os.environ["QWSAAS_GUID"],
-        public_base_url=os.environ.get("QWSAAS_PUBLIC_BASE_URL"),
-    )
-    await send_text(client, os.environ["QWSAAS_CONVERSATION_ID"], "hello")
-
-
-asyncio.run(main())
+await send_text(client, "S:<contact-id>", "hello")
 ```
 
-## Send Big File From URL
+## Generic Official Path
 
 ```python
-import asyncio
-import os
-
-from qwsaas import QwSaasClient, send_big_file_from_url
-
-
-async def main() -> None:
-    client = QwSaasClient(
-        app_key=os.environ["QWSAAS_APP_KEY"],
-        app_secret=os.environ["QWSAAS_APP_SECRET"],
-        guid=os.environ["QWSAAS_GUID"],
-        public_base_url=os.environ.get("QWSAAS_PUBLIC_BASE_URL"),
-        private_base_url=os.environ["QWSAAS_PRIVATE_BASE_URL"],
-        timeout_seconds=600,
-    )
-    await send_big_file_from_url(
-        client,
-        conversation_id=os.environ["QWSAAS_CONVERSATION_ID"],
-        file_url=os.environ["QWSAAS_FILE_URL"],
-        file_name=os.environ.get("QWSAAS_FILE_NAME", "example.zip"),
-        file_type=int(os.environ.get("QWSAAS_FILE_TYPE", "5")),
-    )
-
-
-asyncio.run(main())
+await client.request(
+    "/msg/send_text",
+    {"conversation_id": "S:<contact-id>", "content": "hello"},
+)
 ```
 
-## Parse Callback
+## Send Local File
 
 ```python
-from qwsaas import parse_callback_envelope
+from qwsaas import send_file_from_path
 
-parsed = parse_callback_envelope({
-    "type": "callback",
-    "event_id": "evt-1",
-    "event": {
-        "guid": "<QWSAAS_GUID>",
-        "notify_type": 11010,
-        "data": {
-            "msg_type": 2,
-            "content": "{\"msg\":\"hello\"}",
-            "sender": "1001",
-            "msg_id": "msg-1"
-        }
-    }
-})
+await send_file_from_path(
+    client,
+    conversation_id="S:<contact-id>",
+    file_path="/tmp/report.pdf",
+)
+```
 
-if parsed:
-    for message in parsed.messages:
-        print(message.conversation_id, message.text)
+The helper uploads `/tmp/report.pdf` to configured S3-compatible storage, presigns a GET URL, sends through the private CDN flow, and deletes the temporary object.
+
+## Send Image, Video, Voice From URL
+
+```python
+from qwsaas import send_image_from_url, send_video_from_url, send_voice_from_url
+
+await send_image_from_url(client, "S:<contact-id>", "https://files.example/a.jpg")
+await send_video_from_url(client, "R:<room-id>", "https://files.example/a.mp4")
+await send_voice_from_url(client, "S:<contact-id>", "https://files.example/a.amr")
+```
+
+## Resolve Callback Attachment
+
+```python
+from qwsaas import resolve_callback_attachment_target
+
+target = await resolve_callback_attachment_target(
+    client,
+    download_url=message.download_url or "",
+    file_id=message.file_id,
+    file_name=message.file_name,
+    file_size=message.file_size,
+    aes_key=message.aes_key,
+    auth_key=message.auth_key,
+    attachment_kind=message.attachment_kind,
+    mime_type=message.mime_type,
+    is_hd=message.is_hd,
+    base_request=message.base_request,
+)
+
+print(target.url)
+```
+
+## Download Callback Attachment Bytes
+
+```python
+from qwsaas import download_callback_attachment
+
+attachment = await download_callback_attachment(
+    client,
+    download_url=message.download_url or "",
+    file_id=message.file_id,
+    file_name=message.file_name,
+    file_size=message.file_size,
+    aes_key=message.aes_key,
+    auth_key=message.auth_key,
+    attachment_kind=message.attachment_kind,
+    mime_type=message.mime_type,
+    is_hd=message.is_hd,
+    base_request=message.base_request,
+    max_bytes=20 * 1024 * 1024,
+)
+```
+
+## Tags
+
+```python
+from qwsaas import contact_add_label, create_label, delete_label
+
+created = await create_label(client, {"label_name": "qwsaas-test"})
+await contact_add_label(client, {"user_id": "788...", "label_id": "label-id"})
+await delete_label(client, {"label_id": "label-id"})
+```
+
+## Rooms
+
+```python
+from qwsaas import invite_room_member, remove_room_member
+
+await invite_room_member(client, {"room_id": "10...", "user_list": ["788..."]})
+await remove_room_member(client, {"room_id": "10...", "user_list": ["788..."]})
+```
+
+## Callback State
+
+```python
+from qwsaas import MessageFlagField, has_message_flag, is_original_message, parse_callback_envelope
+
+envelope = parse_callback_envelope(payload)
+if envelope:
+    for message in envelope.messages:
+        if not is_original_message(message):
+            continue
+        if has_message_flag(message, MessageFlagField.MessageFlagFieldRevoke):
+            print("message was revoked", message.appinfo)
 ```

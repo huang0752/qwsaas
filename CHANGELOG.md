@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- Added public `QwSaasClient.request()` and `request_private()` entrypoints.
+- Added default S3-compatible storage support through `StorageConfig` and `S3ObjectStorage`.
+- Added private CDN wrappers for C2C/BIG/WX download and private cloud file access.
+- Added callback attachment target resolution with optional storage presign.
+- Added media message wrappers and URL/local-path file flow helpers.
+- Added official enum classes and callback state fields for `seq`, `appinfo`, `referid`, `flag`, `content_type`, and `asid`.
+- Added common account, instance, contact, room, and label wrappers.
+- Added documentation for storage, local file sending, callback attachment resolution, conversation IDs, and non-owner room-list handling.
+
 ## 0.2.1
 
 - Bumped package metadata for the `v0.2.1` patch release.

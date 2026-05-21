@@ -2,15 +2,14 @@
 
 Private Python SDK for Juhe / QW SaaS enterprise WeChat integrations.
 
-This repository is intentionally kept independent from product applications. It owns the reusable protocol layer for Juhe/QW SaaS:
+This repository owns the reusable Juhe/QW SaaS protocol layer:
 
-- `GuidRequest` public API calls
-- private upload endpoint calls
-- text and file message helpers
-- small-file and big-file upload/send flows
+- public `GuidRequest` calls through `QwSaasClient.request()`
+- private CDN conversion calls through `request_private()`
+- text, file, media, quote, revoke, unread, and room-at message helpers
+- common account, instance, contact, room, label, sync, CDN, upload, and callback helpers
+- S3-compatible object storage staging for local file sending and private-object presign
 - WebSocket auth, receive, ack, and reconnect primitives
-- callback envelope parsing into SDK-level message objects
-- shared exceptions and response normalization
 
 It does not own application-specific behavior such as Hermes gateway sessions, allowlists, mention gates, dedup policy, or tool semantics.
 
@@ -28,31 +27,46 @@ Editable install from another local project:
 uv pip install -e /Users/chou/code/qwsaas
 ```
 
-Future Hermes usage should pin a private Git tag or commit, for example:
+Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.2.1",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.0",
 ]
 ```
 
+Existing consumers pinned to `v0.2.0` or `v0.2.1` are not affected by a new `v0.3.0` tag.
+
 ## Environment
 
-Examples expect credentials and runtime settings from environment variables:
+Basic Juhe config:
 
 ```bash
 export QWSAAS_APP_KEY="your-app-key"
 export QWSAAS_APP_SECRET="your-app-secret"
 export QWSAAS_GUID="your-guid"
 export QWSAAS_PUBLIC_BASE_URL="https://chat-api.juhebot.com"
-export QWSAAS_PRIVATE_BASE_URL="https://private-upload.example"
+export QWSAAS_PRIVATE_BASE_URL="http://127.0.0.1:34789"
 export QWSAAS_CONVERSATION_ID="S:1001"
 ```
 
 `QWSAAS_PUBLIC_BASE_URL` is optional and defaults to `https://chat-api.juhebot.com`.
-`QWSAAS_PRIVATE_BASE_URL` is required only for private upload flows.
-Juhe's private upload API accepts externally reachable `http(s)` URLs; it does
-not read local filesystem paths directly.
+`QWSAAS_PRIVATE_BASE_URL` is the private CDN conversion service base, for example the service that exposes `/cloud/c2c_upload`, `/cloud/c2c_download`, `/cloud/big_upload`, `/cloud/big_download`, and `/cloud/wx_download`. It is not the S3/MinIO endpoint.
+
+S3-compatible storage config for local file sending and private object presign:
+
+```bash
+export QWSAAS_STORAGE_ENDPOINT_URL="http://127.0.0.1:9000"
+export QWSAAS_STORAGE_BUCKET="wework"
+export QWSAAS_STORAGE_ACCESS_KEY="..."
+export QWSAAS_STORAGE_SECRET_KEY="..."
+export QWSAAS_STORAGE_REGION="us-east-1"
+export QWSAAS_STORAGE_PREFIX="qwsaas-temp"
+export QWSAAS_STORAGE_ADDRESSING_STYLE="path"
+export QWSAAS_STORAGE_URL_EXPIRES_SECONDS="3600"
+```
+
+Pure `QwSaasClient(app_key, app_secret, guid)` usage does not require storage. Only helpers that send local paths or presign private objects need it.
 
 ## Quick Start
 
@@ -84,41 +98,98 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## Public API
+Conversation IDs use Juhe's prefixes:
 
-- `QwSaasClient`
-- `send_text(client, conversation_id, content)`
-- `send_room_at(client, conversation_id, content, at_list)`
-- `send_file(client, conversation_id, file_id, file_name, size, md5, aes_key=None)`
-- `send_quote_msg(client, ..., message)`
-- `confirm_msg(client, message_type, sender=..., receiver=..., msgid=..., roomid=None)`
-- `revoke_msg(client, conversation_id, msgid)`
-- `report_unread(client, conversation_id)`
-- `sync_contact(client, seq="", limit=10)`
-- `batch_get_userinfo(client, user_list)`
-- `search_contact(client, keyword, type=1)`
-- `get_room_list(client, start_index=0, limit=10)`
-- `batch_get_room_detail(client, room_list)`
-- `batch_get_member_detail(client, room_id, user_list)`
-- `sync_room_info(client, room_id, version=0)`
-- `sync_label_list(client, seq="", sync_type=2)`
-- `sync_multi_data(client, business_id=1, seq="", limit=10)`
-- `sync_msg(client, sync_key, limit=100)`
-- `get_cdn_info(client)`
-- `get_wwfile_auth_key(client, file_key, file_type)`
-- `get_wwfile_download_info(client, file_id)`
-- `c2c_to_wwfile_id(client, file_id, file_md5, file_size, file_key)`
-- `c2c_upload(client, base_request, file_type, url)`
-- `big_upload(client, appid, auth_key, base_request, file_key, url, guid=None)`
-- `send_small_file_from_url(client, conversation_id, file_url, file_name, file_type=5)`
-- `send_big_file_from_url(client, conversation_id, file_url, file_name, file_type=5)`
-- `download_callback_attachment(client, ...)`
-- `JuheWsClient`
-- `parse_callback_envelope(payload)`
+- direct chat: `S:<user_id>`
+- room chat: `R:<room_id>`
 
-File-upload helpers require `file_url` to be an externally reachable `http(s)`
-URL. If you need to send a local file, expose it through your own file service
-first and pass that URL into the SDK.
+The SDK does not reject IDs by user/room prefix shape beyond helper-level required-field checks.
+
+## Generic Calls
+
+Use `request()` for any public official path that does not have a typed wrapper yet:
+
+```python
+await client.request("/msg/send_text", {"conversation_id": "S:1001", "content": "hello"})
+```
+
+Use `request_private()` for configured private CDN conversion paths:
+
+```python
+await client.request_private("/cloud/wx_download", {"url": "https://imunion.weixin.qq.com/..."})
+```
+
+`request()` injects `guid` into `data`. `request_private()` does not inject business fields.
+
+## Files And Media
+
+URL helpers expect externally reachable URLs:
+
+```python
+from qwsaas import send_image_from_url, send_video_from_url, send_voice_from_url
+
+await send_image_from_url(client, "S:1001", "https://files.example/a.jpg")
+await send_video_from_url(client, "S:1001", "https://files.example/a.mp4")
+await send_voice_from_url(client, "S:1001", "https://files.example/a.amr")
+```
+
+Local path helpers stage bytes into `S3ObjectStorage`, generate a presigned URL, send through the CDN flow, then delete the staged object by default:
+
+```python
+from qwsaas import S3ObjectStorage, send_file_from_path
+
+client = QwSaasClient(..., storage=S3ObjectStorage.from_env())
+await send_file_from_path(client, "S:1001", "/tmp/report.pdf")
+```
+
+The SDK never sends local filesystem paths to Juhe or the private CDN service.
+
+For complex official media payloads, use the typed raw-payload wrappers:
+
+```python
+from qwsaas import send_image, send_media_payload
+
+await send_image(client, {"conversation_id": "S:1001", "file_id": "...", "aes_key": "..."})
+await send_media_payload(client, "/msg/send_weapp", {"conversation_id": "S:1001", "weapp": {...}})
+```
+
+## Callback And Attachments
+
+`parse_callback_envelope()` keeps raw payloads and extracts message state fields:
+
+- `seq`
+- `appinfo`
+- `referid`
+- `flag`
+- `content_type`
+- `asid`
+
+Use helpers for common checks:
+
+```python
+from qwsaas import MessageFlagField, has_message_flag, is_original_message
+
+if is_original_message(message) and has_message_flag(message, MessageFlagField.MessageFlagFieldHasRead):
+    ...
+```
+
+`resolve_callback_attachment_target()` decides whether an attachment is a public qpic URL, C2C file, private WeChat file, big file, or private object URL. If storage is configured, private object URLs can be converted to presigned URLs without downloading bytes.
+
+`download_callback_attachment()` still downloads bytes and raises `QwSaasPrivateObjectAccessError` for inaccessible private objects.
+
+## Room List Note
+
+`get_room_list()` may not return every room when the current account is not the owner. For non-owner rooms, collect `roomid` from message callbacks, then call `batch_get_room_detail()` and store the result in your application.
+
+## Public API Groups
+
+- Client: `QwSaasClient`, `request`, `request_private`
+- Messages: `send_text`, `send_room_at`, `send_file`, `send_image`, `send_video`, `send_voice`, `send_link`, `send_weapp`, `send_quote_msg`, `revoke_msg`
+- File flows: `send_file_from_url`, `send_file_from_path`, `send_image_from_url`, `send_image_from_path`, `send_video_from_url`, `send_video_from_path`, `send_voice_from_url`, `send_voice_from_path`
+- Account/instance: `get_profile`, `get_corp_info`, `get_bind_wxinfo`, `set_notify_url`, `set_proxy`, `stop_client`, `restore_client`
+- Contacts/rooms/tags: `sync_contact`, `sync_apply_contact`, `batch_get_userinfo`, `get_room_list`, `batch_get_room_detail`, `sync_room_info`, `sync_label_list`, `create_label`
+- CDN/uploads: `get_cdn_info`, `get_cdn_file`, `c2c_upload`, `c2c_download`, `big_upload`, `big_download`, `wx_download`
+- Callback/enums: `parse_callback_envelope`, `NotifyType`, `MsgType`, `MessageFlagField`, `ContactType`, `BigCdnType`
 
 ## Tests
 
@@ -126,4 +197,4 @@ first and pass that URL into the SDK.
 uv run --extra dev pytest
 ```
 
-The test suite uses fake HTTP and WebSocket transports. It does not call live Juhe endpoints.
+The default test suite uses fake HTTP, WebSocket, and S3 clients. It does not call live Juhe endpoints, the private CDN service, or real S3.
