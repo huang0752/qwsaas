@@ -108,6 +108,7 @@ def test_parse_file_callback_message_extracts_attachment_metadata() -> None:
                                     "file_md5": "md5",
                                     "aes_key": "aes",
                                     "auth_key": "auth",
+                                    "auth_cookies": "weixinnum=1&authkey=token",
                                     "url": "https://cdn.example/report",
                                 }
                             }
@@ -131,6 +132,7 @@ def test_parse_file_callback_message_extracts_attachment_metadata() -> None:
     assert message.file_md5 == "md5"
     assert message.aes_key == "aes"
     assert message.auth_key == "auth"
+    assert message.auth_cookies == "weixinnum=1&authkey=token"
     assert message.download_url == "https://cdn.example/report"
     assert message.mime_type == "application/pdf"
 

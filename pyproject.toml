@@ -32,3 +32,6 @@ qwsaas = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "real: tests that call real Juhe/CDN/S3 services and are skipped unless explicitly enabled",
+]

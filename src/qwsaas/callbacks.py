@@ -126,6 +126,7 @@ def _parse_message(message: dict[str, Any], event: dict[str, Any]) -> JuheCallba
         file_md5=attachment["file_md5"],
         aes_key=attachment["aes_key"],
         auth_key=attachment["auth_key"],
+        auth_cookies=attachment["auth_cookies"],
         download_url=attachment["download_url"],
         mime_type=attachment["mime_type"],
         is_hd=attachment["is_hd"],
@@ -309,6 +310,7 @@ def _extract_attachment_metadata(message: dict[str, Any]) -> dict[str, Any]:
             "file_md5": None,
             "aes_key": None,
             "auth_key": None,
+            "auth_cookies": None,
             "download_url": None,
             "mime_type": None,
             "is_hd": None,
@@ -342,6 +344,9 @@ def _extract_attachment_metadata(message: dict[str, Any]) -> dict[str, Any]:
         "file_md5": _to_optional_str(_first_present(attachment, "file_md5", "md5", "fileMd5")),
         "aes_key": _to_optional_str(_first_present(attachment, "aes_key", "aesKey")),
         "auth_key": _to_optional_str(_first_present(attachment, "auth_key", "authKey")),
+        "auth_cookies": _to_optional_str(
+            _first_present(attachment, "auth_cookies", "auth_cookie", "authCookies", "authCookie")
+        ),
         "download_url": download_url,
         "mime_type": mime_type,
         "is_hd": _to_optional_bool(_first_present(attachment, "is_hd", "isHd")),

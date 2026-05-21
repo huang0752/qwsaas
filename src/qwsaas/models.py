@@ -37,6 +37,7 @@ class JuheCallbackMessage:
     file_md5: str | None = None
     aes_key: str | None = None
     auth_key: str | None = None
+    auth_cookies: str | None = None
     download_url: str | None = None
     mime_type: str | None = None
     is_hd: bool | None = None

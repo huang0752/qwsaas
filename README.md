@@ -8,7 +8,7 @@ This repository owns the reusable Juhe/QW SaaS protocol layer:
 - private CDN conversion calls through `request_private()`
 - text, file, media, quote, revoke, unread, and room-at message helpers
 - common account, instance, contact, room, label, sync, CDN, upload, and callback helpers
-- S3-compatible object storage staging for local file sending and private-object presign
+- S3-compatible object storage staging for local file sending
 - WebSocket auth, receive, ack, and reconnect primitives
 
 It does not own application-specific behavior such as Hermes gateway sessions, allowlists, mention gates, dedup policy, or tool semantics.
@@ -53,7 +53,7 @@ export QWSAAS_CONVERSATION_ID="S:1001"
 `QWSAAS_PUBLIC_BASE_URL` is optional and defaults to `https://chat-api.juhebot.com`.
 `QWSAAS_PRIVATE_BASE_URL` is the private CDN conversion service base, for example the service that exposes `/cloud/c2c_upload`, `/cloud/c2c_download`, `/cloud/big_upload`, `/cloud/big_download`, and `/cloud/wx_download`. It is not the S3/MinIO endpoint.
 
-S3-compatible storage config for local file sending and private object presign:
+S3-compatible storage config for local file sending:
 
 ```bash
 export QWSAAS_STORAGE_ENDPOINT_URL="http://127.0.0.1:9000"
@@ -66,7 +66,7 @@ export QWSAAS_STORAGE_ADDRESSING_STYLE="path"
 export QWSAAS_STORAGE_URL_EXPIRES_SECONDS="3600"
 ```
 
-Pure `QwSaasClient(app_key, app_secret, guid)` usage does not require storage. Only helpers that send local paths or presign private objects need it.
+Pure `QwSaasClient(app_key, app_secret, guid)` usage does not require storage. Only helpers that send local paths or explicitly restage signed URLs need it.
 
 ## Quick Start
 
@@ -164,6 +164,8 @@ await send_media_payload(client, "/msg/send_weapp", {"conversation_id": "S:1001"
 - `content_type`
 - `asid`
 
+For attachment callbacks it also exposes common download fields such as `file_id`, `file_size`, `aes_key`, `auth_key`, and `auth_cookies`.
+
 Use helpers for common checks:
 
 ```python
@@ -173,9 +175,9 @@ if is_original_message(message) and has_message_flag(message, MessageFlagField.M
     ...
 ```
 
-`resolve_callback_attachment_target()` decides whether an attachment is a public qpic URL, C2C file, private WeChat file, big file, or private object URL. If storage is configured, private object URLs can be converted to presigned URLs without downloading bytes.
+`resolve_callback_attachment_target()` decides whether an attachment is a public qpic URL, C2C file, private WeChat file, or big file. C2C, WeChat private media, and big-file references are resolved through the configured wework CDN `/cloud/*_download` service, and the returned URL is treated as the download target.
 
-`download_callback_attachment()` still downloads bytes and raises `QwSaasPrivateObjectAccessError` for inaccessible private objects.
+`download_callback_attachment()` downloads bytes from the resolved target URL, following the same plain-HTTP pattern used by the MCP delivery tools.
 
 ## Room List Note
 
