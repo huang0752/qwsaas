@@ -7,9 +7,29 @@ import pytest
 
 from qwsaas.exceptions import QwSaasRequestError
 from qwsaas.rooms import (
+    accept_invite_url,
+    add_room_contact,
     batch_get_member_detail,
     batch_get_room_detail,
+    change_room_master,
+    create_empty_outer_room,
+    create_inner_room,
+    create_outer_room,
+    dismiss_room,
     get_room_list,
+    get_room_qrcode,
+    invite_room_member,
+    modify_in_room_nickname,
+    modify_invite_status,
+    modify_room_admin_flag,
+    modify_room_auto_reply,
+    modify_room_name,
+    modify_room_notice,
+    modify_room_remark,
+    quit_room,
+    remove_room_member,
+    room_add_admin,
+    room_remove_admin,
     sync_room_info,
 )
 
@@ -100,4 +120,41 @@ async def test_sync_room_info_posts_expected_payload() -> None:
     client._request_public.assert_awaited_once_with(
         "/room/sync_room_info",
         data={"room_id": "room-1", "version": 3},
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("wrapper", "path"),
+    [
+        (create_outer_room, "/room/create_outer_room"),
+        (create_inner_room, "/room/create_inner_room"),
+        (create_empty_outer_room, "/room/create_empty_outer_room"),
+        (modify_room_name, "/room/modify_room_name"),
+        (invite_room_member, "/room/invite_room_member"),
+        (remove_room_member, "/room/remove_room_member"),
+        (modify_room_notice, "/room/modify_room_notice"),
+        (change_room_master, "/room/change_room_master"),
+        (room_add_admin, "/room/room_add_admin"),
+        (room_remove_admin, "/room/room_remove_admin"),
+        (modify_invite_status, "/room/modify_invite_status"),
+        (quit_room, "/room/quit_room"),
+        (dismiss_room, "/room/dismiss_room"),
+        (add_room_contact, "/room/add_room_contact"),
+        (accept_invite_url, "/room/accept_invite_url"),
+        (modify_in_room_nickname, "/room/modify_in_room_nickname"),
+        (modify_room_remark, "/room/modify_room_remark"),
+        (get_room_qrcode, "/room/get_room_qrcode"),
+        (modify_room_admin_flag, "/room/modify_room_admin_flag"),
+        (modify_room_auto_reply, "/room/modify_room_auto_reply"),
+    ],
+)
+async def test_room_payload_wrappers_preserve_payload(wrapper: object, path: str) -> None:
+    client = SimpleNamespace(_request_public=AsyncMock(return_value={"ok": True}))
+
+    await wrapper(client, {"room_id": "room-1", "extra": "keep"})
+
+    client._request_public.assert_awaited_once_with(
+        path,
+        data={"room_id": "room-1", "extra": "keep"},
     )

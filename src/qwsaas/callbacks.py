@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+from .enums import MessageFlagField, NotifyType
 from .models import JuheCallbackEnvelope, JuheCallbackMessage
 
 NOTIFY_NEW_MESSAGE = 11010
@@ -129,7 +130,31 @@ def _parse_message(message: dict[str, Any], event: dict[str, Any]) -> JuheCallba
         mime_type=attachment["mime_type"],
         is_hd=attachment["is_hd"],
         base_request=attachment["base_request"],
+        seq=_to_optional_str(message.get("seq")),
+        appinfo=_to_optional_str(_first_present(message, "appinfo", "app_info")),
+        referid=_to_optional_str(_first_present(message, "referid", "refer_id")),
+        flag=_to_optional_int(message.get("flag")),
+        content_type=_to_optional_int(message.get("content_type")),
+        asid=_to_optional_str(message.get("asid")),
     )
+
+
+def is_original_message(message: JuheCallbackMessage) -> bool:
+    referid = str(message.referid or "").strip()
+    return referid in {"", "0"}
+
+
+def has_message_flag(message: JuheCallbackMessage, flag: MessageFlagField | int) -> bool:
+    if message.flag is None:
+        return False
+    return bool(int(message.flag) & int(flag))
+
+
+def notify_type_name(value: NotifyType | int) -> str:
+    try:
+        return NotifyType(int(value)).name
+    except ValueError:
+        return str(int(value))
 
 
 def _coerce_callback_event(event: Any) -> dict[str, Any] | None:

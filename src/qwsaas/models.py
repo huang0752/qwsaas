@@ -41,6 +41,12 @@ class JuheCallbackMessage:
     mime_type: str | None = None
     is_hd: bool | None = None
     base_request: dict[str, Any] | None = None
+    seq: str | None = None
+    appinfo: str | None = None
+    referid: str | None = None
+    flag: int | None = None
+    content_type: int | None = None
+    asid: str | None = None
 
 
 @dataclass(frozen=True)

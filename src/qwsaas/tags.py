@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from .client import QwSaasClient
@@ -20,3 +21,29 @@ async def sync_label_list(
         "/label/sync_label_list",
         data={"seq": str(seq or ""), "sync_type": normalized_sync_type},
     )
+
+
+def _payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise QwSaasRequestError("payload must be a mapping")
+    return dict(payload)
+
+
+async def create_label(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await client._request_public("/label/create_label", data=_payload(payload))
+
+
+async def contact_add_label(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await client._request_public("/label/contact_add_label", data=_payload(payload))
+
+
+async def delete_label(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await client._request_public("/label/delete_label", data=_payload(payload))
+
+
+async def modify_label(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await client._request_public("/label/modify_label", data=_payload(payload))
+
+
+async def contact_add_labels(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await client._request_public("/label/contact_add_labels", data=_payload(payload))

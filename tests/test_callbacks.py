@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import json
 
-from qwsaas.callbacks import NOTIFY_BATCH_NEW_MESSAGE, NOTIFY_NEW_MESSAGE, parse_callback_envelope
+from qwsaas.callbacks import (
+    NOTIFY_BATCH_NEW_MESSAGE,
+    NOTIFY_NEW_MESSAGE,
+    has_message_flag,
+    is_original_message,
+    notify_type_name,
+    parse_callback_envelope,
+)
+from qwsaas.enums import MessageFlagField, NotifyType
 
 
 def test_parse_single_stringified_callback_message() -> None:
@@ -230,3 +238,59 @@ def test_parse_callback_marks_self_echo() -> None:
 
     assert parsed is not None
     assert parsed.messages[0].is_self_echo is True
+
+
+def test_parse_callback_extracts_message_state_fields() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "type": "callback",
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NotifyType.NotifyTypeNewMsg,
+                "data": {
+                    "msg_type": 2,
+                    "content": "hello",
+                    "sender": "1001",
+                    "id": "id-1",
+                    "seq": "22",
+                    "appinfo": "appinfo-1",
+                    "referid": "0",
+                    "flag": int(
+                        MessageFlagField.MessageFlagFieldHasRead
+                        | MessageFlagField.MessageFlagFieldQuoteMessage
+                    ),
+                    "content_type": 2,
+                    "asid": "asid-1",
+                },
+            },
+        }
+    )
+
+    assert parsed is not None
+    message = parsed.messages[0]
+    assert message.seq == "22"
+    assert message.appinfo == "appinfo-1"
+    assert message.referid == "0"
+    assert message.flag == 516
+    assert message.content_type == 2
+    assert message.asid == "asid-1"
+    assert is_original_message(message) is True
+    assert has_message_flag(message, MessageFlagField.MessageFlagFieldQuoteMessage) is True
+    assert has_message_flag(message, MessageFlagField.MessageFlagFieldRevoke) is False
+    assert notify_type_name(NotifyType.NotifyTypeNewMsg) == "NotifyTypeNewMsg"
+
+
+def test_parse_non_message_callback_preserves_raw_event() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NotifyType.NotifyTypeUserLogout,
+                "data": "offline",
+            },
+        }
+    )
+
+    assert parsed is not None
+    assert parsed.messages == ()
+    assert parsed.raw_event["data"] == "offline"
