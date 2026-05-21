@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from .client import QwSaasClient
@@ -61,3 +62,12 @@ async def c2c_to_wwfile_id(
             "file_key": file_key,
         },
     )
+
+
+async def get_cdn_file(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise QwSaasRequestError("payload must be a mapping")
+    data = dict(payload)
+    if not data:
+        raise QwSaasRequestError("payload is required")
+    return await client._request_public("/cdn/get_cdn_file", data=data)

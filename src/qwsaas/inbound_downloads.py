@@ -14,7 +14,7 @@ from .exceptions import (
     QwSaasRequestError,
     QwSaasResponseError,
 )
-from .models import DownloadedAttachment
+from .models import DownloadedAttachment, ResolvedAttachmentTarget
 
 
 @dataclass(frozen=True)
@@ -181,6 +181,59 @@ async def download_callback_attachment(
             f"attachment exceeds max_bytes ({int(file_size)} > {int(max_bytes)})"
         )
 
+    resolved_target = await resolve_callback_attachment_target(
+        client,
+        download_url=download_url,
+        file_id=file_id,
+        file_name=file_name,
+        file_size=file_size,
+        aes_key=aes_key,
+        auth_key=auth_key,
+        attachment_kind=attachment_kind,
+        mime_type=mime_type,
+        is_hd=is_hd,
+        base_request=base_request,
+    )
+
+    response = await _download_bytes(
+        resolved_target.url,
+        timeout_seconds=timeout_seconds,
+        headers=resolved_target.headers,
+        requires_object_store_auth=resolved_target.requires_object_store_auth,
+    )
+
+    normalized_name = _normalize_file_name(file_name, resolved_target.url)
+    return DownloadedAttachment(
+        data=response.content,
+        file_name=normalized_name,
+        content_type=_normalize_content_type(
+            response.headers.get("content-type"),
+            normalized_name,
+            resolved_target.url,
+        ),
+    )
+
+
+async def resolve_callback_attachment_target(
+    client: Any,
+    *,
+    download_url: str,
+    file_id: str | None = None,
+    file_name: str | None = None,
+    file_size: int | None = None,
+    aes_key: str | None = None,
+    auth_key: str | None = None,
+    attachment_kind: str | None = None,
+    mime_type: str | None = None,
+    is_hd: bool | None = None,
+    base_request: dict[str, Any] | None = None,
+    storage: Any | None = None,
+) -> ResolvedAttachmentTarget:
+    url = str(download_url or "").strip()
+    normalized_file_id = str(file_id or "").strip()
+    if not url and not normalized_file_id:
+        raise QwSaasRequestError("download_url or file_id is required")
+
     resolved_target = _ResolvedDownloadTarget(url=url)
     if normalized_file_id and _looks_like_big_file_id(normalized_file_id):
         if client is None or not hasattr(client, "_request_public"):
@@ -255,27 +308,53 @@ async def download_callback_attachment(
                 "base_request": resolved_base_request,
             },
         )
-        resolved_target = _ResolvedDownloadTarget(url=_extract_private_download_url(body))
+        resolved_target = _ResolvedDownloadTarget(
+            url=_extract_private_download_url(body),
+            requires_object_store_auth=True,
+        )
     elif not resolved_target.url and normalized_file_id and _looks_like_http_url(normalized_file_id):
         resolved_target = _ResolvedDownloadTarget(url=normalized_file_id)
 
     if not resolved_target.url:
         raise QwSaasRequestError(f"unsupported attachment reference: {normalized_file_id or url}")
 
-    response = await _download_bytes(
-        resolved_target.url,
-        timeout_seconds=timeout_seconds,
-        headers=resolved_target.headers,
-        requires_object_store_auth=resolved_target.requires_object_store_auth,
-    )
+    return _with_object_storage_target(client, resolved_target, storage=storage)
 
-    normalized_name = _normalize_file_name(file_name, resolved_target.url)
-    return DownloadedAttachment(
-        data=response.content,
-        file_name=normalized_name,
-        content_type=_normalize_content_type(
-            response.headers.get("content-type"),
-            normalized_name,
-            resolved_target.url,
-        ),
+
+def _with_object_storage_target(
+    client: Any,
+    target: _ResolvedDownloadTarget,
+    *,
+    storage: Any | None,
+) -> ResolvedAttachmentTarget:
+    if not target.requires_object_store_auth:
+        return ResolvedAttachmentTarget(url=target.url, headers=target.headers)
+
+    object_storage = storage if storage is not None else getattr(client, "storage", None)
+    if object_storage is None:
+        return ResolvedAttachmentTarget(
+            url=target.url,
+            headers=target.headers,
+            object_url=target.url,
+            requires_object_store_auth=True,
+        )
+
+    try:
+        bucket, key = object_storage.parse_object_url(target.url)
+        signed_url = object_storage.presign_get_url(bucket, key)
+    except Exception:
+        return ResolvedAttachmentTarget(
+            url=target.url,
+            headers=target.headers,
+            object_url=target.url,
+            requires_object_store_auth=True,
+        )
+
+    return ResolvedAttachmentTarget(
+        url=signed_url,
+        headers=target.headers,
+        object_url=target.url,
+        bucket=bucket,
+        key=key,
+        requires_object_store_auth=False,
     )

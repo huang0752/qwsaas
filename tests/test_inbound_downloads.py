@@ -12,7 +12,7 @@ from qwsaas.exceptions import (
     QwSaasRequestError,
     QwSaasResponseError,
 )
-from qwsaas.inbound_downloads import download_callback_attachment
+from qwsaas.inbound_downloads import download_callback_attachment, resolve_callback_attachment_target
 
 
 class DummyResponse:
@@ -68,6 +68,19 @@ def patch_async_client(monkeypatch: pytest.MonkeyPatch, response: DummyResponse)
     return calls
 
 
+class FakeStorage:
+    def __init__(self) -> None:
+        self.presigned: list[tuple[str, str]] = []
+
+    def parse_object_url(self, object_url: str) -> tuple[str, str]:
+        assert object_url == "http://127.0.0.1:9000/wework/wwcdn/image.jpg"
+        return "wework", "wwcdn/image.jpg"
+
+    def presign_get_url(self, bucket: str, key: str) -> str:
+        self.presigned.append((bucket, key))
+        return f"https://signed.example/{bucket}/{key}"
+
+
 @pytest.mark.asyncio
 async def test_download_callback_attachment_fetches_direct_url(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = patch_async_client(monkeypatch, DummyResponse(content=b"%PDF", headers={"content-type": "application/pdf"}))
@@ -86,6 +99,93 @@ async def test_download_callback_attachment_fetches_direct_url(monkeypatch: pyte
     assert result.content_type == "application/pdf"
     assert calls["url"] == "https://files.example/report.pdf"
     client._request_private.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resolve_callback_attachment_target_returns_direct_qpic_url() -> None:
+    client = SimpleNamespace(_request_private=AsyncMock())
+
+    target = await resolve_callback_attachment_target(
+        client,
+        download_url="https://wework.qpic.cn/wwpic/abc.jpg",
+        file_name="abc.jpg",
+    )
+
+    assert target.url == "https://wework.qpic.cn/wwpic/abc.jpg"
+    assert target.requires_object_store_auth is False
+    client._request_private.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resolve_callback_attachment_target_presigns_private_c2c_object() -> None:
+    storage = FakeStorage()
+    client = SimpleNamespace(
+        _request_private=AsyncMock(return_value={"data": {"url": "http://127.0.0.1:9000/wework/wwcdn/image.jpg"}}),
+        storage=storage,
+    )
+
+    target = await resolve_callback_attachment_target(
+        client,
+        download_url="",
+        file_id="306b0201020464abcdef",
+        file_name="image.jpg",
+        file_size=3,
+        aes_key="aes",
+        attachment_kind="image",
+        is_hd=False,
+        base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
+    )
+
+    assert target.url == "https://signed.example/wework/wwcdn/image.jpg"
+    assert target.object_url == "http://127.0.0.1:9000/wework/wwcdn/image.jpg"
+    assert target.bucket == "wework"
+    assert target.key == "wwcdn/image.jpg"
+    assert target.requires_object_store_auth is False
+    assert storage.presigned == [("wework", "wwcdn/image.jpg")]
+
+
+@pytest.mark.asyncio
+async def test_resolve_callback_attachment_target_reports_missing_storage_for_private_object() -> None:
+    client = SimpleNamespace(
+        _request_private=AsyncMock(return_value={"data": {"url": "http://127.0.0.1:9000/wework/wwcdn/file.docx"}})
+    )
+
+    target = await resolve_callback_attachment_target(
+        client,
+        download_url="https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=abc",
+        file_name="file.docx",
+        aes_key="aes",
+        auth_key="auth",
+        base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
+    )
+
+    assert target.url == "http://127.0.0.1:9000/wework/wwcdn/file.docx"
+    assert target.object_url == "http://127.0.0.1:9000/wework/wwcdn/file.docx"
+    assert target.requires_object_store_auth is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_callback_attachment_target_routes_big_file_id() -> None:
+    client = SimpleNamespace(
+        _request_public=AsyncMock(
+            return_value={
+                "data": {
+                    "url": "https://wwcdn.weixin.qq.com/downloadobject?fileid=*abc",
+                    "auth_cookie": "weixinnum=1&authkey=token",
+                }
+            }
+        )
+    )
+
+    target = await resolve_callback_attachment_target(
+        client,
+        download_url="",
+        file_id="*abc",
+        file_name="archive.zip",
+    )
+
+    assert target.url == "https://wwcdn.weixin.qq.com/downloadobject?fileid=*abc"
+    assert target.headers == {"Cookie": "weixinnum=1; authkey=token"}
 
 
 @pytest.mark.asyncio

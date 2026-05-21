@@ -62,3 +62,15 @@ class DownloadedAttachment:
     data: bytes
     file_name: str
     content_type: str
+
+
+@dataclass(frozen=True)
+class ResolvedAttachmentTarget:
+    """Resolved callback attachment target without downloading bytes."""
+
+    url: str
+    headers: dict[str, str] | None = None
+    object_url: str | None = None
+    bucket: str | None = None
+    key: str | None = None
+    requires_object_store_auth: bool = False
