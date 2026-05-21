@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Iterable
 
 from .client import QwSaasClient
@@ -23,6 +24,66 @@ async def send_text(client: QwSaasClient, conversation_id: str, content: str) ->
         "/msg/send_text",
         data={"conversation_id": conversation_id, "content": content},
     )
+
+
+async def send_media_payload(
+    client: QwSaasClient,
+    path: str,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not path:
+        raise QwSaasRequestError("path is required")
+    if not isinstance(payload, Mapping):
+        raise QwSaasRequestError("payload must be a mapping")
+    return await client._request_public(path, data=dict(payload))
+
+
+async def send_voice(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_voice", payload)
+
+
+async def send_location(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_location", payload)
+
+
+async def send_image(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_image", payload)
+
+
+async def send_video(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_video", payload)
+
+
+async def send_big_video(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_big_video", payload)
+
+
+async def send_gif(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_gif", payload)
+
+
+async def send_gif_url(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_gif_url", payload)
+
+
+async def send_personal_card(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_personal_card", payload)
+
+
+async def send_link(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_link", payload)
+
+
+async def send_weapp(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/send_weapp", payload)
+
+
+async def apply_voice_id(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/apply_voice_id", payload)
+
+
+async def query_voice_text(client: QwSaasClient, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return await send_media_payload(client, "/msg/query_voice_text", payload)
 
 
 async def send_file(

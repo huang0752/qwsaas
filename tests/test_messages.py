@@ -7,13 +7,26 @@ import pytest
 
 from qwsaas.exceptions import QwSaasRequestError
 from qwsaas.messages import (
+    apply_voice_id,
     confirm_msg,
+    query_voice_text,
     report_unread,
     revoke_msg,
     send_file,
+    send_gif,
+    send_gif_url,
+    send_image,
+    send_link,
+    send_location,
+    send_media_payload,
+    send_personal_card,
     send_quote_msg,
     send_room_at,
     send_text,
+    send_video,
+    send_big_video,
+    send_voice,
+    send_weapp,
 )
 
 
@@ -38,6 +51,58 @@ async def test_send_text_posts_expected_payload() -> None:
     client._request_public.assert_awaited_once_with(
         "/msg/send_text",
         data={"conversation_id": "S:1001", "content": "hello"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_media_payload_preserves_unknown_fields() -> None:
+    client = SimpleNamespace(_request_public=AsyncMock(return_value={"ok": True}))
+
+    await send_media_payload(client, "/msg/send_image", {"conversation_id": "S:1001", "extra": "keep"})
+
+    client._request_public.assert_awaited_once_with(
+        "/msg/send_image",
+        data={"conversation_id": "S:1001", "extra": "keep"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_send_media_payload_validates_path_and_payload() -> None:
+    client = SimpleNamespace(_request_public=AsyncMock())
+
+    with pytest.raises(QwSaasRequestError, match="path"):
+        await send_media_payload(client, "", {"conversation_id": "S:1001"})
+
+    with pytest.raises(QwSaasRequestError, match="payload"):
+        await send_media_payload(client, "/msg/send_image", ["bad"])  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("wrapper", "path"),
+    [
+        (send_voice, "/msg/send_voice"),
+        (send_location, "/msg/send_location"),
+        (send_image, "/msg/send_image"),
+        (send_video, "/msg/send_video"),
+        (send_big_video, "/msg/send_big_video"),
+        (send_gif, "/msg/send_gif"),
+        (send_gif_url, "/msg/send_gif_url"),
+        (send_personal_card, "/msg/send_personal_card"),
+        (send_link, "/msg/send_link"),
+        (send_weapp, "/msg/send_weapp"),
+        (apply_voice_id, "/msg/apply_voice_id"),
+        (query_voice_text, "/msg/query_voice_text"),
+    ],
+)
+async def test_media_wrappers_post_expected_paths(wrapper: object, path: str) -> None:
+    client = SimpleNamespace(_request_public=AsyncMock(return_value={"ok": True}))
+
+    await wrapper(client, {"conversation_id": "S:1001", "official": {"field": "keep"}})
+
+    client._request_public.assert_awaited_once_with(
+        path,
+        data={"conversation_id": "S:1001", "official": {"field": "keep"}},
     )
 
 
