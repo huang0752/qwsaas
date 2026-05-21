@@ -17,6 +17,7 @@ class QwSaasClient:
     guid: str
     private_base_url: str | None = None
     public_base_url: str | None = None
+    storage: Any | None = None
     timeout_seconds: float = 30.0
 
     _public_url: Final[str] = "https://chat-api.juhebot.com/open/GuidRequest"
@@ -43,6 +44,11 @@ class QwSaasClient:
         }
         return await self._post_json(self._resolve_public_url(), payload)
 
+    async def request(self, path: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Call any public Juhe GuidRequest path."""
+
+        return await self._request_public(path, {} if data is None else data)
+
     async def _request_private(self, path: str, data: dict[str, Any]) -> dict[str, Any]:
         if not self.private_base_url:
             raise QwSaasRequestError("private_base_url is not set")
@@ -53,6 +59,11 @@ class QwSaasClient:
 
         url = self.private_base_url.rstrip("/") + "/" + path.lstrip("/")
         return await self._post_json(url, data)
+
+    async def request_private(self, path: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Call a configured private CDN/storage conversion endpoint path."""
+
+        return await self._request_private(path, {} if data is None else data)
 
     async def _post_json(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:

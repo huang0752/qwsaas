@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from qwsaas import QwSaasApiError, QwSaasClient, QwSaasHttpError, QwSaasResponseError
+from qwsaas.exceptions import QwSaasRequestError
 
 
 class DummyResponse:
@@ -67,6 +68,36 @@ async def test_public_request_payload_includes_auth_path_and_guid(monkeypatch: p
 
 
 @pytest.mark.asyncio
+async def test_request_public_entrypoint_injects_guid(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = patch_async_client(monkeypatch, DummyResponse())
+    client = QwSaasClient(app_key="app", app_secret="secret", guid="guid-1")
+
+    await client.request("/msg/send_text", {"content": "hello"})
+
+    assert calls["json"]["path"] == "/msg/send_text"
+    assert calls["json"]["data"] == {"content": "hello", "guid": "guid-1"}
+
+
+@pytest.mark.asyncio
+async def test_request_public_entrypoint_defaults_empty_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = patch_async_client(monkeypatch, DummyResponse())
+    client = QwSaasClient(app_key="app", app_secret="secret", guid="guid-1")
+
+    await client.request("/cdn/get_cdn_info")
+
+    assert calls["json"]["path"] == "/cdn/get_cdn_info"
+    assert calls["json"]["data"] == {"guid": "guid-1"}
+
+
+@pytest.mark.asyncio
+async def test_request_public_entrypoint_rejects_non_dict_data() -> None:
+    client = QwSaasClient(app_key="app", app_secret="secret", guid="guid-1")
+
+    with pytest.raises(QwSaasRequestError, match="data must be a dict"):
+        await client.request("/msg/send_text", ["bad"])  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
 async def test_private_request_builds_url_from_private_base(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = patch_async_client(monkeypatch, DummyResponse())
     client = QwSaasClient(
@@ -80,6 +111,22 @@ async def test_private_request_builds_url_from_private_base(monkeypatch: pytest.
 
     assert calls["url"] == "https://private.example/base/cloud/c2c_upload"
     assert calls["json"] == {"url": "https://file.example/a"}
+
+
+@pytest.mark.asyncio
+async def test_request_private_entrypoint_uses_private_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = patch_async_client(monkeypatch, DummyResponse())
+    client = QwSaasClient(
+        app_key="app",
+        app_secret="secret",
+        guid="guid-1",
+        private_base_url="https://private.example",
+    )
+
+    await client.request_private("/cloud/wx_download", {"url": "https://imunion.example/file"})
+
+    assert calls["url"] == "https://private.example/cloud/wx_download"
+    assert calls["json"] == {"url": "https://imunion.example/file"}
 
 
 @pytest.mark.asyncio

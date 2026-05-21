@@ -44,6 +44,14 @@ class QwSaasPrivateObjectAccessError(QwSaasResponseError):
         self.status_code = status_code
 
 
+class QwSaasStorageConfigError(QwSaasError):
+    """Missing or invalid object storage configuration."""
+
+
+class QwSaasStorageError(QwSaasError):
+    """Object storage operation failed."""
+
+
 class QwSaasApiError(QwSaasError):
     """API-level error (non-zero error_code)."""
 

@@ -12,6 +12,8 @@ from .exceptions import (
     QwSaasPrivateObjectAccessError,
     QwSaasRequestError,
     QwSaasResponseError,
+    QwSaasStorageConfigError,
+    QwSaasStorageError,
 )
 from .file_flows import send_big_file_from_url, send_small_file_from_url
 from .inbound_downloads import download_callback_attachment
@@ -26,6 +28,7 @@ from .messages import (
 )
 from .models import DownloadedAttachment, JuheApiResponse, JuheCallbackEnvelope, JuheCallbackMessage
 from .rooms import batch_get_member_detail, batch_get_room_detail, get_room_list, sync_room_info
+from .storage import S3ObjectStorage, StorageConfig, StoredObject
 from .sync import sync_msg, sync_multi_data
 from .tags import sync_label_list
 from .uploads import big_upload, c2c_upload
@@ -60,6 +63,9 @@ __all__ = [
     "QwSaasPrivateObjectAccessError",
     "QwSaasRequestError",
     "QwSaasResponseError",
+    "QwSaasStorageConfigError",
+    "QwSaasStorageError",
+    "S3ObjectStorage",
     "parse_callback_envelope",
     "report_unread",
     "revoke_msg",
@@ -75,4 +81,6 @@ __all__ = [
     "sync_msg",
     "sync_multi_data",
     "sync_room_info",
+    "StorageConfig",
+    "StoredObject",
 ]
