@@ -11,7 +11,7 @@ import httpx
 
 from .cdn import c2c_to_wwfile_id, get_cdn_info, get_wwfile_auth_key
 from .exceptions import QwSaasRequestError, QwSaasResponseError, QwSaasStorageConfigError
-from .messages import send_file
+from .messages import send_file, send_image
 from .uploads import big_upload, c2c_upload
 from .client import QwSaasClient
 
@@ -369,6 +369,16 @@ async def send_small_file_from_url(
     except KeyError as exc:
         logger.error("Missing C2C field %s in response: %s", exc, _preview(c2c_resp))
         raise QwSaasResponseError(f"Missing C2C field: {exc}") from exc
+
+    if file_type in {1, 2}:
+        return await send_image(
+            client,
+            {
+                "conversation_id": conversation_id,
+                "file_id": file_id,
+                "aes_key": aes_key,
+            },
+        )
 
     return await send_file(
         client,

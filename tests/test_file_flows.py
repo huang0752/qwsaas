@@ -71,6 +71,58 @@ async def test_small_file_flow_uploads_c2c_and_sends_file(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
+async def test_small_image_flow_uploads_c2c_and_sends_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = SimpleNamespace(guid="guid-1")
+    monkeypatch.setattr(file_flows, "get_cdn_info", AsyncMock(return_value=CDN_RESPONSE))
+    monkeypatch.setattr(
+        file_flows,
+        "c2c_upload",
+        AsyncMock(
+            return_value={
+                "data": {
+                    "file_id": "image-file-id",
+                    "file_size": 12,
+                    "file_md5": "md5",
+                    "aes_key": "aes",
+                }
+            }
+        ),
+    )
+    monkeypatch.setattr(file_flows, "send_image", AsyncMock(return_value={"sent": True}))
+    monkeypatch.setattr(file_flows, "send_file", AsyncMock(return_value={"file_sent": True}))
+
+    result = await file_flows.send_small_file_from_url(
+        client,
+        conversation_id="S:1001",
+        file_url="https://file.example/a.jpg",
+        file_name="a.jpg",
+        file_type=2,
+    )
+
+    assert result == {"sent": True}
+    file_flows.c2c_upload.assert_awaited_once_with(
+        client,
+        base_request={
+            "cdn_dns": "cdn",
+            "client_version": "5.0.0",
+            "corp_id": "corp",
+            "vid": "vid",
+        },
+        file_type=2,
+        url="https://file.example/a.jpg",
+    )
+    file_flows.send_image.assert_awaited_once_with(
+        client,
+        {
+            "conversation_id": "S:1001",
+            "file_id": "image-file-id",
+            "aes_key": "aes",
+        },
+    )
+    file_flows.send_file.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_big_file_flow_uploads_bigcdn_converts_id_and_sends_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.0",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.1",
 ]
 ```
 
-Existing consumers pinned to `v0.2.0` or `v0.2.1` are not affected by a new `v0.3.0` tag.
+Existing consumers pinned to `v0.2.0`, `v0.2.1`, or `v0.3.0` are not affected by a new `v0.3.1` tag.
 
 ## Environment
 
@@ -133,7 +133,7 @@ await send_video_from_url(client, "S:1001", "https://files.example/a.mp4")
 await send_voice_from_url(client, "S:1001", "https://files.example/a.amr")
 ```
 
-Local path helpers stage bytes into `S3ObjectStorage`, generate a presigned URL, send through the CDN flow, then delete the staged object by default:
+Local path helpers stage bytes into `S3ObjectStorage`, generate a presigned URL, send through the CDN flow, then delete the staged object by default. Image helpers upload with `file_type=2` and send through the native `/msg/send_image` endpoint; other file helpers use `/msg/send_file`.
 
 ```python
 from qwsaas import S3ObjectStorage, send_file_from_path
