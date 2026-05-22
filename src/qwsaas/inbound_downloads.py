@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mimetypes
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -18,6 +19,7 @@ from .uploads import big_download, c2c_download, wx_download
 class _ResolvedDownloadTarget:
     url: str
     headers: dict[str, str] | None = None
+    expires_at: datetime | None = None
     object_url: str | None = None
 
 
@@ -310,6 +312,7 @@ async def resolve_callback_attachment_target(
     return ResolvedAttachmentTarget(
         url=resolved_target.url,
         headers=resolved_target.headers,
+        expires_at=resolved_target.expires_at,
         object_url=resolved_target.object_url,
         bucket=bucket,
         key=key,
@@ -325,4 +328,18 @@ def _private_object_target(object_url: str, *, storage: Any | None) -> _Resolved
         return _ResolvedDownloadTarget(url=url, object_url=url)
     bucket, key = storage.parse_object_url(url)
     signed_url = storage.presign_get_url(bucket, key)
-    return _ResolvedDownloadTarget(url=signed_url, object_url=url)
+    return _ResolvedDownloadTarget(
+        url=signed_url,
+        expires_at=datetime.now(UTC) + timedelta(seconds=_storage_url_expires_seconds(storage)),
+        object_url=url,
+    )
+
+
+def _storage_url_expires_seconds(storage: Any) -> int:
+    config = getattr(storage, "config", None)
+    expires = getattr(config, "url_expires_seconds", 3600)
+    try:
+        parsed = int(expires)
+    except (TypeError, ValueError):
+        return 3600
+    return parsed if parsed > 0 else 3600

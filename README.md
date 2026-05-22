@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.3",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.4",
 ]
 ```
 
-Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, `v0.3.1`, or `v0.3.2` are not affected by a new `v0.3.3` tag.
+Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, `v0.3.1`, `v0.3.2`, or `v0.3.3` are not affected by a new `v0.3.4` tag.
 
 ## Environment
 
@@ -64,6 +64,25 @@ export QWSAAS_STORAGE_REGION="us-east-1"
 export QWSAAS_STORAGE_PREFIX="qwsaas-temp"
 export QWSAAS_STORAGE_ADDRESSING_STYLE="path"
 export QWSAAS_STORAGE_URL_EXPIRES_SECONDS="3600"
+```
+
+For host-specific inbound storage, callers can keep their own prefix instead of remapping env vars:
+
+```python
+from qwsaas import S3ObjectStorage
+
+storage = S3ObjectStorage.from_env(
+    prefix="JUHE_INBOUND_S3_",
+    url_env="JUHE_INBOUND_STORAGE_URL",
+)
+```
+
+The URL form is similar to database and Redis URLs:
+
+```bash
+export JUHE_INBOUND_STORAGE_URL="s3+http://127.0.0.1:9000/wework?region=us-east-1&addressing_style=path&expires=3600"
+export JUHE_INBOUND_S3_ACCESS_KEY="..."
+export JUHE_INBOUND_S3_SECRET_KEY="..."
 ```
 
 Pure `QwSaasClient(app_key, app_secret, guid)` usage does not require storage. Only helpers that send local paths or explicitly restage signed URLs need it.

@@ -6,7 +6,7 @@ import mimetypes
 import os
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 import uuid
 
 import boto3
@@ -28,8 +28,26 @@ class StorageConfig:
     url_expires_seconds: int = 3600
 
     @classmethod
-    def from_env(cls, prefix: str = "QWSAAS_STORAGE_") -> "StorageConfig":
+    def from_env(
+        cls,
+        prefix: str = "QWSAAS_STORAGE_",
+        *,
+        url_env: str | None = None,
+    ) -> "StorageConfig":
         env = os.environ
+
+        url_key = url_env or f"{prefix}URL"
+        url_value = env.get(url_key, "").strip()
+        if url_value:
+            return cls.from_url(
+                url_value,
+                access_key=env.get(f"{prefix}ACCESS_KEY"),
+                secret_key=env.get(f"{prefix}SECRET_KEY"),
+                region=env.get(f"{prefix}REGION"),
+                prefix=env.get(f"{prefix}PREFIX"),
+                addressing_style=env.get(f"{prefix}ADDRESSING_STYLE"),
+                url_expires_seconds=env.get(f"{prefix}URL_EXPIRES_SECONDS"),
+            )
 
         def required(name: str) -> str:
             key = f"{prefix}{name}"
@@ -58,6 +76,77 @@ class StorageConfig:
             url_expires_seconds=expires,
         )
 
+    @classmethod
+    def from_url(
+        cls,
+        storage_url: str,
+        *,
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        region: str | None = None,
+        prefix: str | None = None,
+        addressing_style: str | None = None,
+        url_expires_seconds: str | int | None = None,
+    ) -> "StorageConfig":
+        parsed = urlparse(str(storage_url or "").strip())
+        if parsed.scheme not in {"s3+http", "s3+https"}:
+            raise QwSaasStorageConfigError("storage URL scheme must be s3+http or s3+https")
+        path_parts = [unquote(part) for part in parsed.path.split("/") if part]
+        if not parsed.hostname or not path_parts:
+            raise QwSaasStorageConfigError("storage URL must include host and bucket")
+
+        host = parsed.hostname
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        endpoint_url = f"{parsed.scheme[3:]}://{host}"
+        if parsed.port is not None:
+            endpoint_url = f"{endpoint_url}:{parsed.port}"
+
+        query = parse_qs(parsed.query)
+
+        def query_one(name: str) -> str | None:
+            values = query.get(name)
+            if not values:
+                return None
+            return str(values[-1]).strip() or None
+
+        resolved_access_key = _clean_optional(access_key) or (
+            unquote(parsed.username) if parsed.username else None
+        )
+        resolved_secret_key = _clean_optional(secret_key) or (
+            unquote(parsed.password) if parsed.password else None
+        )
+        if not resolved_access_key:
+            raise QwSaasStorageConfigError("storage access key is required")
+        if not resolved_secret_key:
+            raise QwSaasStorageConfigError("storage secret key is required")
+
+        resolved_expires = _parse_positive_int(
+            _clean_optional(str(url_expires_seconds) if url_expires_seconds is not None else None)
+            or query_one("url_expires_seconds")
+            or query_one("expires"),
+            name="storage URL expires",
+            default=3600,
+        )
+        resolved_addressing_style = (
+            _clean_optional(addressing_style) or query_one("addressing_style") or "virtual"
+        )
+        if resolved_addressing_style not in {"path", "virtual", "auto"}:
+            raise QwSaasStorageConfigError(
+                "storage URL addressing_style must be path, virtual, or auto"
+            )
+
+        return cls(
+            endpoint_url=endpoint_url,
+            bucket=path_parts[0],
+            access_key=resolved_access_key,
+            secret_key=resolved_secret_key,
+            region=_clean_optional(region) or query_one("region"),
+            prefix=_clean_optional(prefix) or query_one("prefix") or "qwsaas-temp",
+            addressing_style=resolved_addressing_style,
+            url_expires_seconds=resolved_expires,
+        )
+
 
 @dataclass(frozen=True)
 class StoredObject:
@@ -74,8 +163,13 @@ class S3ObjectStorage:
         self._cached_client: Any | None = None
 
     @classmethod
-    def from_env(cls, prefix: str = "QWSAAS_STORAGE_") -> "S3ObjectStorage":
-        return cls(StorageConfig.from_env(prefix=prefix))
+    def from_env(
+        cls,
+        prefix: str = "QWSAAS_STORAGE_",
+        *,
+        url_env: str | None = None,
+    ) -> "S3ObjectStorage":
+        return cls(StorageConfig.from_env(prefix=prefix, url_env=url_env))
 
     def _client(self) -> Any:
         if self._cached_client is None:
@@ -180,3 +274,20 @@ class S3ObjectStorage:
         if parsed.netloc and parsed.scheme:
             return f"{parsed.scheme}://{bucket}.{parsed.netloc}/{quoted_key}"
         return f"{endpoint}/{bucket}/{quoted_key}"
+
+
+def _clean_optional(value: str | None) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _parse_positive_int(value: str | None, *, name: str, default: int) -> int:
+    if not value:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise QwSaasStorageConfigError(f"{name} must be an integer") from exc
+    if parsed <= 0:
+        raise QwSaasStorageConfigError(f"{name} must be > 0")
+    return parsed

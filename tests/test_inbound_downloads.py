@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -153,9 +154,11 @@ async def test_resolve_callback_attachment_target_presigns_private_object_url_wi
         _request_private=AsyncMock(return_value={"data": {"url": object_url}})
     )
     storage = SimpleNamespace(
+        config=SimpleNamespace(url_expires_seconds=900),
         parse_object_url=lambda url: ("wework", "wwcdn/file.docx"),
         presign_get_url=lambda bucket, key: f"https://signed.example/{bucket}/{key}?signature=1",
     )
+    before = datetime.now(UTC)
 
     target = await resolve_callback_attachment_target(
         client,
@@ -172,6 +175,8 @@ async def test_resolve_callback_attachment_target_presigns_private_object_url_wi
     assert target.bucket == "wework"
     assert target.key == "wwcdn/file.docx"
     assert target.requires_object_store_auth is False
+    assert target.expires_at is not None
+    assert before + timedelta(seconds=899) <= target.expires_at <= datetime.now(UTC) + timedelta(seconds=901)
 
 
 @pytest.mark.asyncio

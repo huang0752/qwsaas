@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 
@@ -79,6 +80,7 @@ class ResolvedAttachmentTarget:
 
     url: str
     headers: dict[str, str] | None = None
+    expires_at: datetime | None = None
     object_url: str | None = None
     bucket: str | None = None
     key: str | None = None

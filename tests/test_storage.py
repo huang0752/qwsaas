@@ -27,6 +27,45 @@ def test_storage_config_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.url_expires_seconds == 900
 
 
+def test_storage_config_from_prefixed_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JUHE_INBOUND_S3_ENDPOINT_URL", "http://127.0.0.1:9000")
+    monkeypatch.setenv("JUHE_INBOUND_S3_BUCKET", "wework")
+    monkeypatch.setenv("JUHE_INBOUND_S3_ACCESS_KEY", "ak")
+    monkeypatch.setenv("JUHE_INBOUND_S3_SECRET_KEY", "sk")
+    monkeypatch.setenv("JUHE_INBOUND_S3_ADDRESSING_STYLE", "path")
+
+    config = StorageConfig.from_env(prefix="JUHE_INBOUND_S3_")
+
+    assert config.endpoint_url == "http://127.0.0.1:9000"
+    assert config.bucket == "wework"
+    assert config.access_key == "ak"
+    assert config.secret_key == "sk"
+    assert config.addressing_style == "path"
+
+
+def test_storage_config_from_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "JUHE_INBOUND_STORAGE_URL",
+        "s3+http://127.0.0.1:9000/wework?region=us-east-1&addressing_style=path&expires=900&prefix=inbound",
+    )
+    monkeypatch.setenv("JUHE_INBOUND_S3_ACCESS_KEY", "ak")
+    monkeypatch.setenv("JUHE_INBOUND_S3_SECRET_KEY", "sk")
+
+    config = StorageConfig.from_env(
+        prefix="JUHE_INBOUND_S3_",
+        url_env="JUHE_INBOUND_STORAGE_URL",
+    )
+
+    assert config.endpoint_url == "http://127.0.0.1:9000"
+    assert config.bucket == "wework"
+    assert config.access_key == "ak"
+    assert config.secret_key == "sk"
+    assert config.region == "us-east-1"
+    assert config.addressing_style == "path"
+    assert config.prefix == "inbound"
+    assert config.url_expires_seconds == 900
+
+
 def test_storage_config_requires_core_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("QWSAAS_STORAGE_ENDPOINT_URL", "http://127.0.0.1:9000")
 

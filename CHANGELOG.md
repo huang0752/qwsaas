@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Added storage URL env support for S3-compatible object stores, including custom env prefixes for host integrations.
+- Added `expires_at` to resolved callback attachment targets so callers can refresh signed URLs from cached object keys.
+
 ## 0.3.3
 
 - Presign private object-store URLs returned by Juhe private CDN download conversion when storage is configured.
