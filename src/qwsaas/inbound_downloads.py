@@ -159,6 +159,7 @@ async def download_callback_attachment(
     base_request: dict[str, Any] | None = None,
     max_bytes: int | None = None,
     timeout_seconds: float = 30.0,
+    storage: Any | None = None,
 ) -> DownloadedAttachment:
     url = str(download_url or "").strip()
     normalized_file_id = str(file_id or "").strip()
@@ -183,6 +184,7 @@ async def download_callback_attachment(
         mime_type=mime_type,
         is_hd=is_hd,
         base_request=base_request,
+        storage=storage if storage is not None else getattr(client, "storage", None),
     )
 
     response = await _download_bytes(

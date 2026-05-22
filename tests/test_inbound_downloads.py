@@ -248,6 +248,43 @@ async def test_download_callback_attachment_resolves_private_wecdn_url(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_download_callback_attachment_uses_client_storage_for_private_object_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    object_url = "http://127.0.0.1:9000/wework/wwcdn/report.pdf"
+    signed_url = "https://signed.example/wework/wwcdn/report.pdf?signature=1"
+    calls = patch_async_client(
+        monkeypatch,
+        DummyResponse(content=b"%PDF", headers={"content-type": "application/pdf"}),
+    )
+    storage = SimpleNamespace(
+        config=SimpleNamespace(url_expires_seconds=900),
+        parse_object_url=lambda url: ("wework", "wwcdn/report.pdf"),
+        presign_get_url=lambda bucket, key: signed_url,
+    )
+    client = SimpleNamespace(
+        _request_private=AsyncMock(return_value={"data": {"url": object_url}}),
+        storage=storage,
+    )
+
+    result = await download_callback_attachment(
+        client,
+        download_url="https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=abc",
+        file_name="report.pdf",
+        file_size=4,
+        aes_key="aes",
+        auth_key="auth",
+        base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
+        max_bytes=1024,
+    )
+
+    assert result.data == b"%PDF"
+    assert result.file_name == "report.pdf"
+    assert result.content_type == "application/pdf"
+    assert calls["url"] == signed_url
+
+
+@pytest.mark.asyncio
 async def test_download_callback_attachment_uses_get_cdn_info_when_base_request_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
