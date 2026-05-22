@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.2",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.3",
 ]
 ```
 
-Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, or `v0.3.1` are not affected by a new `v0.3.2` tag.
+Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, `v0.3.1`, or `v0.3.2` are not affected by a new `v0.3.3` tag.
 
 ## Environment
 

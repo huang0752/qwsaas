@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- Presign private object-store URLs returned by Juhe private CDN download conversion when storage is configured.
+
 ## 0.3.2
 
 - Added quoted-message callback fields for `quote_appinfo` and `quote_content`, plus `is_quote_message()`.

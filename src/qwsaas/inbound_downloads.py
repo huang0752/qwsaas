@@ -18,6 +18,7 @@ from .uploads import big_download, c2c_download, wx_download
 class _ResolvedDownloadTarget:
     url: str
     headers: dict[str, str] | None = None
+    object_url: str | None = None
 
 
 def _looks_like_private_media_url(download_url: str) -> bool:
@@ -239,7 +240,7 @@ async def resolve_callback_attachment_target(
             file_size=int(file_size),
             auth_cookies=str(auth_cookies or "").strip() or None,
         )
-        resolved_target = _ResolvedDownloadTarget(url=_extract_private_download_url(body))
+        resolved_target = _private_object_target(_extract_private_download_url(body), storage=storage)
     elif normalized_file_id and _looks_like_c2c_file_id(normalized_file_id):
         if not str(aes_key or "").strip():
             raise QwSaasRequestError("c2c attachment download requires aes_key")
@@ -262,7 +263,7 @@ async def resolve_callback_attachment_target(
             aes_key=str(aes_key),
             to_mp3=False,
         )
-        resolved_target = _ResolvedDownloadTarget(url=_extract_private_download_url(body))
+        resolved_target = _private_object_target(_extract_private_download_url(body), storage=storage)
     elif normalized_file_id and _looks_like_http_url(normalized_file_id) and not _looks_like_public_qpic_url(normalized_file_id):
         if not str(aes_key or "").strip() or not str(auth_key or "").strip():
             raise QwSaasRequestError(
@@ -279,7 +280,7 @@ async def resolve_callback_attachment_target(
             aes_key=str(aes_key),
             auth_key=str(auth_key),
         )
-        resolved_target = _ResolvedDownloadTarget(url=_extract_private_download_url(body))
+        resolved_target = _private_object_target(_extract_private_download_url(body), storage=storage)
     elif url and _looks_like_private_media_url(url):
         if not str(aes_key or "").strip() or not str(auth_key or "").strip():
             raise QwSaasRequestError(
@@ -296,12 +297,32 @@ async def resolve_callback_attachment_target(
             aes_key=str(aes_key),
             auth_key=str(auth_key),
         )
-        resolved_target = _ResolvedDownloadTarget(url=_extract_private_download_url(body))
+        resolved_target = _private_object_target(_extract_private_download_url(body), storage=storage)
     elif not resolved_target.url and normalized_file_id and _looks_like_http_url(normalized_file_id):
         resolved_target = _ResolvedDownloadTarget(url=normalized_file_id)
 
     if not resolved_target.url:
         raise QwSaasRequestError(f"unsupported attachment reference: {normalized_file_id or url}")
 
-    _ = storage
-    return ResolvedAttachmentTarget(url=resolved_target.url, headers=resolved_target.headers)
+    bucket = key = None
+    if resolved_target.object_url and storage is not None and hasattr(storage, "parse_object_url"):
+        bucket, key = storage.parse_object_url(resolved_target.object_url)
+    return ResolvedAttachmentTarget(
+        url=resolved_target.url,
+        headers=resolved_target.headers,
+        object_url=resolved_target.object_url,
+        bucket=bucket,
+        key=key,
+        requires_object_store_auth=bool(resolved_target.object_url and not (bucket and key)),
+    )
+
+
+def _private_object_target(object_url: str, *, storage: Any | None) -> _ResolvedDownloadTarget:
+    url = str(object_url or "").strip()
+    if storage is None:
+        return _ResolvedDownloadTarget(url=url, object_url=url)
+    if not hasattr(storage, "parse_object_url") or not hasattr(storage, "presign_get_url"):
+        return _ResolvedDownloadTarget(url=url, object_url=url)
+    bucket, key = storage.parse_object_url(url)
+    signed_url = storage.presign_get_url(bucket, key)
+    return _ResolvedDownloadTarget(url=signed_url, object_url=url)

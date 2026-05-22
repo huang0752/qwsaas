@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from qwsaas.exceptions import QwSaasRequestError, QwSaasResponseError
+from qwsaas.exceptions import QwSaasRequestError
 from qwsaas.inbound_downloads import download_callback_attachment, resolve_callback_attachment_target
 
 
@@ -100,10 +100,9 @@ async def test_resolve_callback_attachment_target_returns_direct_qpic_url() -> N
 
 
 @pytest.mark.asyncio
-async def test_resolve_callback_attachment_target_returns_cdn_c2c_url_without_presign() -> None:
-    client = SimpleNamespace(
-        _request_private=AsyncMock(return_value={"data": {"url": "http://127.0.0.1:9000/wework/wwcdn/image.jpg"}}),
-    )
+async def test_resolve_callback_attachment_target_returns_cdn_c2c_object_url_without_storage() -> None:
+    object_url = "http://127.0.0.1:9000/wework/wwcdn/image.jpg"
+    client = SimpleNamespace(_request_private=AsyncMock(return_value={"data": {"url": object_url}}))
 
     target = await resolve_callback_attachment_target(
         client,
@@ -117,17 +116,18 @@ async def test_resolve_callback_attachment_target_returns_cdn_c2c_url_without_pr
         base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
     )
 
-    assert target.url == "http://127.0.0.1:9000/wework/wwcdn/image.jpg"
-    assert target.object_url is None
+    assert target.url == object_url
+    assert target.object_url == object_url
     assert target.bucket is None
     assert target.key is None
-    assert target.requires_object_store_auth is False
+    assert target.requires_object_store_auth is True
 
 
 @pytest.mark.asyncio
 async def test_resolve_callback_attachment_target_uses_cdn_download_url_without_storage() -> None:
+    object_url = "http://127.0.0.1:9000/wework/wwcdn/file.docx"
     client = SimpleNamespace(
-        _request_private=AsyncMock(return_value={"data": {"url": "http://127.0.0.1:9000/wework/wwcdn/file.docx"}})
+        _request_private=AsyncMock(return_value={"data": {"url": object_url}})
     )
 
     target = await resolve_callback_attachment_target(
@@ -139,8 +139,38 @@ async def test_resolve_callback_attachment_target_uses_cdn_download_url_without_
         base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
     )
 
-    assert target.url == "http://127.0.0.1:9000/wework/wwcdn/file.docx"
-    assert target.object_url is None
+    assert target.url == object_url
+    assert target.object_url == object_url
+    assert target.bucket is None
+    assert target.key is None
+    assert target.requires_object_store_auth is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_callback_attachment_target_presigns_private_object_url_with_storage() -> None:
+    object_url = "http://127.0.0.1:9000/wework/wwcdn/file.docx"
+    client = SimpleNamespace(
+        _request_private=AsyncMock(return_value={"data": {"url": object_url}})
+    )
+    storage = SimpleNamespace(
+        parse_object_url=lambda url: ("wework", "wwcdn/file.docx"),
+        presign_get_url=lambda bucket, key: f"https://signed.example/{bucket}/{key}?signature=1",
+    )
+
+    target = await resolve_callback_attachment_target(
+        client,
+        download_url="https://imunion.weixin.qq.com/cgi-bin/mmae-bin/tpdownloadmedia?param=abc",
+        file_name="file.docx",
+        aes_key="aes",
+        auth_key="auth",
+        base_request={"cdn_dns": "cdn", "client_version": "5.0.0", "corp_id": "corp", "vid": "vid"},
+        storage=storage,
+    )
+
+    assert target.url == "https://signed.example/wework/wwcdn/file.docx?signature=1"
+    assert target.object_url == object_url
+    assert target.bucket == "wework"
+    assert target.key == "wwcdn/file.docx"
     assert target.requires_object_store_auth is False
 
 
