@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.1",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.2",
 ]
 ```
 
-Existing consumers pinned to `v0.2.0`, `v0.2.1`, or `v0.3.0` are not affected by a new `v0.3.1` tag.
+Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, or `v0.3.1` are not affected by a new `v0.3.2` tag.
 
 ## Environment
 
@@ -163,16 +163,23 @@ await send_media_payload(client, "/msg/send_weapp", {"conversation_id": "S:1001"
 - `flag`
 - `content_type`
 - `asid`
+- `quote_appinfo`
+- `quote_content`
 
 For attachment callbacks it also exposes common download fields such as `file_id`, `file_size`, `aes_key`, `auth_key`, and `auth_cookies`.
+
+For quoted messages, Juhe may keep `referid` as `"0"` and expose the quoted target through `quote_appinfo`. Match `quote_appinfo` against earlier message `appinfo` values in the same conversation to resolve the quoted message.
 
 Use helpers for common checks:
 
 ```python
-from qwsaas import MessageFlagField, has_message_flag, is_original_message
+from qwsaas import MessageFlagField, has_message_flag, is_original_message, is_quote_message
 
 if is_original_message(message) and has_message_flag(message, MessageFlagField.MessageFlagFieldHasRead):
     ...
+
+if is_quote_message(message):
+    print(message.quote_appinfo, message.quote_content)
 ```
 
 `resolve_callback_attachment_target()` decides whether an attachment is a public qpic URL, C2C file, private WeChat file, or big file. C2C, WeChat private media, and big-file references are resolved through the configured wework CDN `/cloud/*_download` service, and the returned URL is treated as the download target.

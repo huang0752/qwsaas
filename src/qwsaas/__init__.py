@@ -13,6 +13,7 @@ from .callbacks import (
     NOTIFY_NEW_MESSAGE,
     has_message_flag,
     is_original_message,
+    is_quote_message,
     notify_type_name,
     parse_callback_envelope,
 )
@@ -213,6 +214,7 @@ __all__ = [
     "has_message_flag",
     "invite_room_member",
     "is_original_message",
+    "is_quote_message",
     "logout",
     "modify_in_room_nickname",
     "modify_invite_status",

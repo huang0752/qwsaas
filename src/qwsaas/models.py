@@ -48,6 +48,8 @@ class JuheCallbackMessage:
     flag: int | None = None
     content_type: int | None = None
     asid: str | None = None
+    quote_appinfo: str | None = None
+    quote_content: str | None = None
 
 
 @dataclass(frozen=True)

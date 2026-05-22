@@ -137,6 +137,8 @@ def _parse_message(message: dict[str, Any], event: dict[str, Any]) -> JuheCallba
         flag=_to_optional_int(message.get("flag")),
         content_type=_to_optional_int(message.get("content_type")),
         asid=_to_optional_str(message.get("asid")),
+        quote_appinfo=_to_optional_str(_first_present(message, "quote_appinfo", "quote_app_info")),
+        quote_content=_to_optional_str(message.get("quote_content")),
     )
 
 
@@ -149,6 +151,14 @@ def has_message_flag(message: JuheCallbackMessage, flag: MessageFlagField | int)
     if message.flag is None:
         return False
     return bool(int(message.flag) & int(flag))
+
+
+def is_quote_message(message: JuheCallbackMessage) -> bool:
+    return (
+        has_message_flag(message, MessageFlagField.MessageFlagFieldQuoteMessage)
+        or bool(str(message.quote_appinfo or "").strip())
+        or bool(str(message.quote_content or "").strip())
+    )
 
 
 def notify_type_name(value: NotifyType | int) -> str:

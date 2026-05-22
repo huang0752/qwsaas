@@ -7,6 +7,7 @@ from qwsaas.callbacks import (
     NOTIFY_NEW_MESSAGE,
     has_message_flag,
     is_original_message,
+    is_quote_message,
     notify_type_name,
     parse_callback_envelope,
 )
@@ -280,6 +281,38 @@ def test_parse_callback_extracts_message_state_fields() -> None:
     assert has_message_flag(message, MessageFlagField.MessageFlagFieldQuoteMessage) is True
     assert has_message_flag(message, MessageFlagField.MessageFlagFieldRevoke) is False
     assert notify_type_name(NotifyType.NotifyTypeNewMsg) == "NotifyTypeNewMsg"
+
+
+def test_parse_callback_extracts_quote_fields() -> None:
+    parsed = parse_callback_envelope(
+        {
+            "type": "callback",
+            "event": {
+                "guid": "guid-1",
+                "notify_type": NotifyType.NotifyTypeNewMsg,
+                "data": {
+                    "msg_type": 2,
+                    "content": "quote-sample-0522-5",
+                    "sender": "1001",
+                    "roomid": "2001",
+                    "id": "1027710",
+                    "seq": "9220488",
+                    "appinfo": "1588540994705717994",
+                    "referid": "0",
+                    "flag": int(MessageFlagField.MessageFlagFieldQuoteMessage),
+                    "quote_content": "「Alice：quote-sample-0522-4」\n- - -\nquote-sample-0522-5",
+                    "quote_appinfo": "4530056746852165557",
+                },
+            },
+        }
+    )
+
+    assert parsed is not None
+    message = parsed.messages[0]
+    assert message.quote_appinfo == "4530056746852165557"
+    assert message.quote_content == "「Alice：quote-sample-0522-4」\n- - -\nquote-sample-0522-5"
+    assert is_quote_message(message) is True
+    assert is_original_message(message) is True
 
 
 def test_parse_non_message_callback_preserves_raw_event() -> None:

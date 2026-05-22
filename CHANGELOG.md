@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Added quoted-message callback fields for `quote_appinfo` and `quote_content`, plus `is_quote_message()`.
+
 ## 0.3.0
 
 - Added public `QwSaasClient.request()` and `request_private()` entrypoints.
