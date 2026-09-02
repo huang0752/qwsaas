@@ -1,0 +1,8 @@
+{
+  "guid": "xxx",
+  "notify_type": 11004,
+  "data": {
+    "error_code": -1,
+    "error_message": "user logout"
+  }
+}

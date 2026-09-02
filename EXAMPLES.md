@@ -63,19 +63,20 @@ await send_voice_from_url(client, "S:<contact-id>", "https://files.example/a.amr
 ```python
 from qwsaas import resolve_callback_attachment_target
 
+attachment = message.attachments[0]
 target = await resolve_callback_attachment_target(
     client,
-    download_url=message.download_url or "",
-    file_id=message.file_id,
-    file_name=message.file_name,
-    file_size=message.file_size,
-    aes_key=message.aes_key,
-    auth_key=message.auth_key,
-    auth_cookies=message.auth_cookies,
-    attachment_kind=message.attachment_kind,
-    mime_type=message.mime_type,
-    is_hd=message.is_hd,
-    base_request=message.base_request,
+    download_url=attachment.download_url or "",
+    file_id=attachment.file_id,
+    file_name=attachment.file_name,
+    file_size=attachment.file_size,
+    aes_key=attachment.aes_key,
+    auth_key=attachment.auth_key,
+    auth_cookies=attachment.auth_cookies,
+    attachment_kind=attachment.kind.value,
+    mime_type=attachment.mime_type,
+    is_hd=attachment.is_hd,
+    base_request=attachment.base_request,
 )
 
 print(target.url)
@@ -86,19 +87,20 @@ print(target.url)
 ```python
 from qwsaas import download_callback_attachment
 
+media = message.attachments[0]
 attachment = await download_callback_attachment(
     client,
-    download_url=message.download_url or "",
-    file_id=message.file_id,
-    file_name=message.file_name,
-    file_size=message.file_size,
-    aes_key=message.aes_key,
-    auth_key=message.auth_key,
-    auth_cookies=message.auth_cookies,
-    attachment_kind=message.attachment_kind,
-    mime_type=message.mime_type,
-    is_hd=message.is_hd,
-    base_request=message.base_request,
+    download_url=media.download_url or "",
+    file_id=media.file_id,
+    file_name=media.file_name,
+    file_size=media.file_size,
+    aes_key=media.aes_key,
+    auth_key=media.auth_key,
+    auth_cookies=media.auth_cookies,
+    attachment_kind=media.kind.value,
+    mime_type=media.mime_type,
+    is_hd=media.is_hd,
+    base_request=media.base_request,
     max_bytes=20 * 1024 * 1024,
 )
 ```
@@ -125,13 +127,21 @@ await remove_room_member(client, {"room_id": "10...", "user_list": ["788..."]})
 ## Callback State
 
 ```python
-from qwsaas import MessageFlagField, has_message_flag, is_original_message, parse_callback_envelope
+from qwsaas import (
+    MessageRelation,
+    MessageStateKind,
+    logical_message_key,
+    normalize_callback_identity,
+    parse_callback_envelope,
+)
 
 envelope = parse_callback_envelope(payload)
-if envelope:
-    for message in envelope.messages:
-        if not is_original_message(message):
-            continue
-        if has_message_flag(message, MessageFlagField.MessageFlagFieldRevoke):
-            print("message was revoked", message.appinfo)
+identity = normalize_callback_identity(envelope, current_account_id="ACCOUNT_A")
+
+for message, normalized in zip(envelope.messages, identity.messages, strict=True):
+    if message.message_relation is MessageRelation.ORIGINAL:
+        key = logical_message_key(message, current_account_id="ACCOUNT_A")
+        print(normalized.provider_conversation_id, key.to_safe_dict())
+    if MessageStateKind.REVOKE in message.state_kinds:
+        print("message was revoked")
 ```

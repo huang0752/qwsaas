@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from qwsaas import is_original_message, parse_callback_envelope
+from qwsaas import MessageRelation, parse_callback_envelope
 
 pytestmark = pytest.mark.real
 
@@ -31,17 +31,19 @@ def test_real_callback_payload_replay_preserves_message_fields() -> None:
     payload = _load_callback_payload()
     parsed = parse_callback_envelope(payload)
 
-    assert parsed is not None
     assert parsed.raw_envelope == payload
     assert parsed.messages
 
     summary = {
         "notify_type": parsed.notify_type,
         "message_count": len(parsed.messages),
-        "original_count": sum(1 for message in parsed.messages if is_original_message(message)),
-        "attachment_count": sum(
-            1 for message in parsed.messages if message.download_url or message.file_id
+        "original_count": sum(
+            1 for message in parsed.messages
+            if message.message_relation is MessageRelation.ORIGINAL
         ),
-        "message_types": sorted({message.message_type for message in parsed.messages}),
+        "attachment_count": sum(len(message.attachments) for message in parsed.messages),
+        "message_types": sorted(
+            {int(message.message_kind) for message in parsed.messages if message.message_kind is not None}
+        ),
     }
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))

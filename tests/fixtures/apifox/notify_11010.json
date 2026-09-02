@@ -1,0 +1,23 @@
+{
+  "guid": "xxx",
+  "notify_type": 11010,
+  "data": {
+    "seq": "7272646",
+    "id": "1067188",
+    "appinfo": "APPINFO_PUBLIC_EXAMPLE",
+    "sender": "16888",
+    "receiver": "788",
+    "roomid": "0",
+    "sendtime": 1711649467,
+    "sender_name": "example",
+    "content_type": 2,
+    "referid": "0",
+    "flag": 16777216,
+    "content": "hello world",
+    "at_list": [],
+    "quote_content": "",
+    "quote_appinfo": "",
+    "send_flag": 1,
+    "msg_type": 2
+  }
+}

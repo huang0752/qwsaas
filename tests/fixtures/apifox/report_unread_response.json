@@ -1,0 +1,23 @@
+{
+  "error_code": 0,
+  "error_message": "ok",
+  "data": {
+    "msg_data": {
+      "id": "LOCAL_READ",
+      "seq": "SEQ_READ",
+      "messagetype": 0,
+      "sender": "ACCOUNT_A",
+      "receiver": "CONTACT_A",
+      "roomid": "0",
+      "contenttype": 2001,
+      "content": "PUBLIC_EXAMPLE_CONTENT",
+      "sendtime": 1711649476,
+      "flag": 0,
+      "devinfo": "0",
+      "appinfo": "APPINFO_READ",
+      "sendername": "REDACTED",
+      "asid": "0"
+    },
+    "is_svr_fail": false
+  }
+}

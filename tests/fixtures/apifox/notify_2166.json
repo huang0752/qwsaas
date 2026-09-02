@@ -1,0 +1,18 @@
+{
+  "guid": "example-guid",
+  "notify_type": 2166,
+  "data": {
+    "type": 2,
+    "msgid": "example-call-id",
+    "timestamp": 1718782003,
+    "inviteMsg": {
+      "roomid": "example-room",
+      "roomkey": "0",
+      "memlist": [],
+      "inviteId": "example-user",
+      "inviteType": 0,
+      "actType": 1,
+      "sdkBuff": ""
+    }
+  }
+}

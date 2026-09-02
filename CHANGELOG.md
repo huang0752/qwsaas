@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0rc1
+
+- Replaced the v0.3 callback model with separate protocol parsing and account-scoped identity normalization.
+- Added strict official-envelope dispatch: only 11010 creates a message; non-message events preserve raw data with zero messages.
+- Added distinct envelope and per-item callback fingerprints, plus durable logical keys based on `appinfo` or account-scoped `id`/`seq`.
+- Added explicit private peer resolution, account-scoped conversation keys, typed identity failures, tri-state authorship, relation and multi-state models.
+- Added independent `/sync/sync_msg` record parsing; sync data is never represented as a synthetic 11013 callback.
+- Added safe callback reprs, multi-attachment models, and automated fixture leak scanning.
+- Kept 11013 and room direction release-gated until the required complete real callback matrix is approved; this build is RC-only.
+
 ## 0.3.4
 
 - Added storage URL env support for S3-compatible object stores, including custom env prefixes for host integrations.

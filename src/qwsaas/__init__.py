@@ -8,14 +8,42 @@ from .accounts import (
     get_qrcode_card_new,
     logout,
 )
+from .callback_identity import (
+    normalize_account_id,
+    normalize_callback_identity,
+    normalize_room_id,
+    normalize_user_id,
+)
+from .callback_messages import parse_protocol_message
+from .callback_models import (
+    AttachmentKind,
+    CallbackParseIssueCode,
+    ConversationKind,
+    IdentityFailureReason,
+    JuheAttachment,
+    JuheCallbackEnvelope,
+    JuheCallbackMessage,
+    JuheCallbackParseIssue,
+    JuheLogicalMessageKey,
+    JuheMessageProtocolFields,
+    JuheNormalizedCallbackEnvelope,
+    JuheNormalizedCallbackMessage,
+    JuheSentMessageRef,
+    LogicalMessageKeyFailure,
+    LogicalMessageKeySource,
+    MessageDirection,
+    MessageRelation,
+    MessageSource,
+    MessageStateKind,
+)
+from .callback_sync import parse_sync_messages
 from .callbacks import (
     NOTIFY_BATCH_NEW_MESSAGE,
     NOTIFY_NEW_MESSAGE,
-    has_message_flag,
-    is_original_message,
-    is_quote_message,
     notify_type_name,
+    parse_and_normalize_callback,
     parse_callback_envelope,
+    try_parse_callback_envelope,
 )
 from .cdn import (
     c2c_to_wwfile_id,
@@ -52,8 +80,10 @@ from .enums import (
     QrcodeStatus,
 )
 from .exceptions import (
+    CallbackParseErrorCode,
     ErrorCode,
     QwSaasApiError,
+    QwSaasCallbackParseError,
     QwSaasError,
     QwSaasHttpError,
     QwSaasPrivateObjectAccessError,
@@ -75,8 +105,23 @@ from .file_flows import (
     send_voice_from_path,
     send_voice_from_url,
 )
-from .inbound_downloads import download_callback_attachment, resolve_callback_attachment_target
-from .instances import restore_client, set_bridge, set_notify_url, set_proxy, stop_client, update_client
+from .inbound_downloads import (
+    download_callback_attachment,
+    resolve_callback_attachment_target,
+)
+from .instances import (
+    restore_client,
+    set_bridge,
+    set_notify_url,
+    set_proxy,
+    stop_client,
+    update_client,
+)
+from .message_results import (
+    logical_message_key,
+    parse_sent_message_ref,
+    sent_message_matches_callback,
+)
 from .messages import (
     apply_voice_id,
     confirm_msg,
@@ -102,8 +147,6 @@ from .messages import (
 from .models import (
     DownloadedAttachment,
     JuheApiResponse,
-    JuheCallbackEnvelope,
-    JuheCallbackMessage,
     ResolvedAttachmentTarget,
 )
 from .rooms import (
@@ -134,28 +177,62 @@ from .rooms import (
 )
 from .storage import S3ObjectStorage, StorageConfig, StoredObject
 from .sync import sync_msg, sync_multi_data
-from .tags import contact_add_label, contact_add_labels, create_label, delete_label, modify_label, sync_label_list
-from .uploads import big_download, big_upload, c2c_download, c2c_upload, upload_video_preview, wx_download
+from .tags import (
+    contact_add_label,
+    contact_add_labels,
+    create_label,
+    delete_label,
+    modify_label,
+    sync_label_list,
+)
+from .uploads import (
+    big_download,
+    big_upload,
+    c2c_download,
+    c2c_upload,
+    upload_video_preview,
+    wx_download,
+)
 from .ws import DEFAULT_WS_URL, JuheWsClient
 
 __all__ = [
     "DEFAULT_WS_URL",
-    "AddFriendSourceType",
-    "BigCdnType",
-    "ContactType",
-    "DownloadedAttachment",
-    "ErrorCode",
-    "JuheApiResponse",
-    "JuheCallbackEnvelope",
-    "JuheCallbackMessage",
-    "JuheWsClient",
-    "MessageFlagField",
-    "MsgType",
     "NOTIFY_BATCH_NEW_MESSAGE",
     "NOTIFY_NEW_MESSAGE",
+    "SMALL_FILE_LIMIT_BYTES",
+    "AddFriendSourceType",
+    "AttachmentKind",
+    "BigCdnType",
+    "CallbackParseErrorCode",
+    "CallbackParseIssueCode",
+    "ContactType",
+    "ConversationKind",
+    "DownloadedAttachment",
+    "ErrorCode",
+    "IdentityFailureReason",
+    "JuheApiResponse",
+    "JuheAttachment",
+    "JuheCallbackEnvelope",
+    "JuheCallbackMessage",
+    "JuheCallbackParseIssue",
+    "JuheLogicalMessageKey",
+    "JuheMessageProtocolFields",
+    "JuheNormalizedCallbackEnvelope",
+    "JuheNormalizedCallbackMessage",
+    "JuheSentMessageRef",
+    "JuheWsClient",
+    "LogicalMessageKeyFailure",
+    "LogicalMessageKeySource",
+    "MessageDirection",
+    "MessageFlagField",
+    "MessageRelation",
+    "MessageSource",
+    "MessageStateKind",
+    "MsgType",
     "NotifyType",
     "QrcodeStatus",
     "QwSaasApiError",
+    "QwSaasCallbackParseError",
     "QwSaasClient",
     "QwSaasError",
     "QwSaasHttpError",
@@ -166,7 +243,6 @@ __all__ = [
     "QwSaasStorageError",
     "ResolvedAttachmentTarget",
     "S3ObjectStorage",
-    "SMALL_FILE_LIMIT_BYTES",
     "StorageConfig",
     "StoredObject",
     "accept_invite_url",
@@ -211,10 +287,8 @@ __all__ = [
     "get_room_qrcode",
     "get_wwfile_auth_key",
     "get_wwfile_download_info",
-    "has_message_flag",
     "invite_room_member",
-    "is_original_message",
-    "is_quote_message",
+    "logical_message_key",
     "logout",
     "modify_in_room_nickname",
     "modify_invite_status",
@@ -224,9 +298,17 @@ __all__ = [
     "modify_room_name",
     "modify_room_notice",
     "modify_room_remark",
+    "normalize_account_id",
+    "normalize_callback_identity",
+    "normalize_room_id",
+    "normalize_user_id",
     "notify_type_name",
     "op_black_list",
+    "parse_and_normalize_callback",
     "parse_callback_envelope",
+    "parse_protocol_message",
+    "parse_sent_message_ref",
+    "parse_sync_messages",
     "query_voice_text",
     "quit_room",
     "remove_room_member",
@@ -262,6 +344,7 @@ __all__ = [
     "send_voice_from_path",
     "send_voice_from_url",
     "send_weapp",
+    "sent_message_matches_callback",
     "set_bridge",
     "set_notify_url",
     "set_proxy",
@@ -272,6 +355,7 @@ __all__ = [
     "sync_msg",
     "sync_multi_data",
     "sync_room_info",
+    "try_parse_callback_envelope",
     "update_client",
     "update_contact",
     "upload_video_preview",

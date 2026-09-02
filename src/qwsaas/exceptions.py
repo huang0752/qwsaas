@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any
 
 
@@ -11,6 +11,34 @@ class ErrorCode(IntEnum):
 
 class QwSaasError(Exception):
     """Base error for QW SaaS client."""
+
+
+class CallbackParseErrorCode(StrEnum):
+    INVALID_INPUT_TYPE = "invalid_input_type"
+    MISSING_NOTIFY_TYPE = "missing_notify_type"
+    INVALID_NOTIFY_TYPE = "invalid_notify_type"
+    INVALID_EVENT = "invalid_event"
+    CONFLICTING_EVENTS = "conflicting_events"
+    INVALID_MESSAGE_PAYLOAD = "invalid_message_payload"
+    UNVERIFIED_BATCH_SHAPE = "unverified_batch_shape"
+
+
+class QwSaasCallbackParseError(QwSaasError):
+    """Safe, structured failure produced by strict callback parsing."""
+
+    def __init__(
+        self,
+        code: CallbackParseErrorCode,
+        *,
+        path: str,
+        notify_type: int | None = None,
+    ) -> None:
+        self.code = code
+        self.path = path
+        self.notify_type = notify_type
+        suffix = f" notify_type={notify_type}" if notify_type is not None else ""
+        self.message = f"callback parse failed: {code.value} at {path}{suffix}"
+        super().__init__(self.message)
 
 
 class QwSaasRequestError(QwSaasError):

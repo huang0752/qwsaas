@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.3.4",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.4.0rc1",
 ]
 ```
 
-Existing consumers pinned to `v0.2.0`, `v0.2.1`, `v0.3.0`, `v0.3.1`, `v0.3.2`, or `v0.3.3` are not affected by a new `v0.3.4` tag.
+`v0.4.0rc1` is intentionally incompatible with `v0.3.x`. Keep existing consumers pinned until they have migrated to the new callback models. A final `v0.4.0` tag is prohibited until the documented real callback matrix passes.
 
 ## Environment
 
@@ -174,32 +174,33 @@ await send_media_payload(client, "/msg/send_weapp", {"conversation_id": "S:1001"
 
 ## Callback And Attachments
 
-`parse_callback_envelope()` keeps raw payloads and extracts message state fields:
-
-- `seq`
-- `appinfo`
-- `referid`
-- `flag`
-- `content_type`
-- `asid`
-- `quote_appinfo`
-- `quote_content`
-
-For attachment callbacks it also exposes common download fields such as `file_id`, `file_size`, `aes_key`, `auth_key`, and `auth_cookies`.
-
-For quoted messages, Juhe may keep `referid` as `"0"` and expose the quoted target through `quote_appinfo`. Match `quote_appinfo` against earlier message `appinfo` values in the same conversation to resolve the quoted message.
-
-Use helpers for common checks:
+The `0.4.0` callback API is a breaking contract. Protocol parsing is pure; account-dependent identity is a separate step:
 
 ```python
-from qwsaas import MessageFlagField, has_message_flag, is_original_message, is_quote_message
+from qwsaas import (
+    MessageRelation,
+    logical_message_key,
+    normalize_callback_identity,
+    parse_callback_envelope,
+)
 
-if is_original_message(message) and has_message_flag(message, MessageFlagField.MessageFlagFieldHasRead):
-    ...
+envelope = parse_callback_envelope(payload)
+normalized = normalize_callback_identity(envelope, current_account_id=current_account_id)
 
-if is_quote_message(message):
-    print(message.quote_appinfo, message.quote_content)
+for message, identity in zip(envelope.messages, normalized.messages, strict=True):
+    if message.message_relation is not MessageRelation.ORIGINAL:
+        continue
+    print(identity.provider_conversation_id, identity.account_conversation_key)
+    durable_key = logical_message_key(message, current_account_id=current_account_id)
 ```
+
+For private messages, `sender`, `receiver`, and `current_account_id` are compared together to determine the peer. Both directions therefore produce `S:<peer>`. Rooms produce `R:<roomid>`, but room direction remains `unknown` with `ROOM_DIRECTION_UNVERIFIED` until the real callback matrix establishes its semantics. `send_flag` is preserved as protocol data and is not treated as an echo flag.
+
+Protocol identifiers remain separate: `appinfo` is global; `id` and `seq` are account-scoped. `logical_message_key()` uses that priority and never falls back to callback fingerprints. `envelope_event_key` and `callback_message_key` are replay fingerprints only.
+
+Use `parse_sync_messages(records, sync_page_key=...)` for explicitly extracted `/sync/sync_msg` records. Sync results are never wrapped as synthetic 11013 callbacks. The RC rejects 11013 until a complete real batch callback is sanitized and approved.
+
+Attachments are exposed as `message.attachments`. Sensitive fields and raw payloads are excluded from default repr; use `to_safe_dict()` for logging. Each `JuheAttachment` retains the parameters needed by the download helpers.
 
 `resolve_callback_attachment_target()` decides whether an attachment is a public qpic URL, C2C file, private WeChat file, or big file. C2C, WeChat private media, and big-file references are resolved through the configured wework CDN `/cloud/*_download` service, and the returned URL is treated as the download target.
 
@@ -217,12 +218,13 @@ if is_quote_message(message):
 - Account/instance: `get_profile`, `get_corp_info`, `get_bind_wxinfo`, `set_notify_url`, `set_proxy`, `stop_client`, `restore_client`
 - Contacts/rooms/tags: `sync_contact`, `sync_apply_contact`, `batch_get_userinfo`, `get_room_list`, `batch_get_room_detail`, `sync_room_info`, `sync_label_list`, `create_label`
 - CDN/uploads: `get_cdn_info`, `get_cdn_file`, `c2c_upload`, `c2c_download`, `big_upload`, `big_download`, `wx_download`
-- Callback/enums: `parse_callback_envelope`, `NotifyType`, `MsgType`, `MessageFlagField`, `ContactType`, `BigCdnType`
+- Callback/enums: `parse_callback_envelope`, `normalize_callback_identity`, `parse_sync_messages`, `logical_message_key`, `NotifyType`, `MsgType`, `MessageFlagField`, `ContactType`, `BigCdnType`
 
 ## Tests
 
 ```bash
 uv run --extra dev pytest
+uv run python scripts/check_callback_fixtures.py
 ```
 
 The default test suite uses fake HTTP, WebSocket, and S3 clients. It does not call live Juhe endpoints, the private CDN service, or real S3.

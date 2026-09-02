@@ -1,0 +1,23 @@
+{
+  "error_code": 0,
+  "error_message": "ok",
+  "data": {
+    "msg_data": {
+      "id": "LOCAL_IMAGE",
+      "seq": "SEQ_IMAGE",
+      "messagetype": 0,
+      "sender": "ACCOUNT_A",
+      "receiver": "CONTACT_A",
+      "roomid": "0",
+      "contenttype": 14,
+      "content": "PUBLIC_EXAMPLE_CONTENT",
+      "sendtime": 1711600561,
+      "flag": 16777216,
+      "devinfo": "65537",
+      "appinfo": "APPINFO_IMAGE",
+      "sendername": "REDACTED",
+      "asid": "0"
+    },
+    "is_svr_fail": false
+  }
+}

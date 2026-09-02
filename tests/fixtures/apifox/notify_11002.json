@@ -1,0 +1,12 @@
+{
+  "guid": "xxx",
+  "notify_type": 11002,
+  "data": {
+    "status": 2,
+    "vid": 16888,
+    "nickname": "xxx",
+    "avatar": "https://example.invalid/avatar",
+    "logo": "https://example.invalid/logo",
+    "corp_id": 197032
+  }
+}

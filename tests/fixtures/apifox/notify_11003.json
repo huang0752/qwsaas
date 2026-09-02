@@ -1,0 +1,15 @@
+{
+  "guid": "xxx",
+  "notify_type": 11003,
+  "data": {
+    "user_id": "16888",
+    "name": "xxx",
+    "real_name": "xxx",
+    "corp_id": "1970",
+    "gender": 1,
+    "party_id": "16888",
+    "avatar": "https://example.invalid/avatar",
+    "corp_short_name": "xx",
+    "corp_full_name": "xxx"
+  }
+}
