@@ -10,6 +10,7 @@ from qwsaas.callback_models import (
     MessageSource,
 )
 from qwsaas.message_results import (
+    appinfo_values_equivalent,
     logical_message_key,
     parse_sent_message_ref,
     sent_message_matches_callback,
@@ -114,6 +115,47 @@ def test_strong_sent_callback_match_requires_equal_valid_appinfo() -> None:
     assert sent_message_matches_callback(sent, message(appinfo=None)) is False
 
 
+def test_appinfo_equivalence_accepts_raw_and_strict_base64_forms() -> None:
+    raw = "CAU_APPINFO_A"
+    encoded = "Q0FVX0FQUElORk9fQQ=="
+
+    assert appinfo_values_equivalent(encoded, raw) is True
+    assert appinfo_values_equivalent(raw, encoded) is True
+    assert appinfo_values_equivalent(raw, raw) is True
+    assert appinfo_values_equivalent(encoded, encoded) is True
+
+
+def test_appinfo_equivalence_rejects_invalid_or_ambiguous_base64_without_raising() -> None:
+    assert appinfo_values_equivalent("Q0FV====", "CAU") is False
+    assert appinfo_values_equivalent("//4=", "��") is False
+    assert appinfo_values_equivalent(True, "True") is False
+    assert appinfo_values_equivalent(None, "None") is False
+
+
+def test_sent_callback_match_keeps_raw_appinfo_and_never_uses_text_or_time() -> None:
+    encoded = "Q0FVX0FQUElORk9fQQ=="
+    response = {
+        "data": {
+            "msg_data": {
+                "id": "LOCAL_A",
+                "seq": "SEQ_A",
+                "appinfo": encoded,
+                "sendtime": 1700000000,
+            }
+        }
+    }
+    sent = parse_sent_message_ref(response)
+    assert sent is not None
+
+    callback = message(appinfo="CAU_APPINFO_A", sendtime=1700000000, content="same")
+    assert sent_message_matches_callback(sent, callback) is True
+    assert sent.appinfo == encoded
+    assert response["data"]["msg_data"]["appinfo"] == encoded
+
+    unrelated = message(appinfo="CAU_APPINFO_B", sendtime=1700000000, content="same")
+    assert sent_message_matches_callback(sent, unrelated) is False
+
+
 def test_invalid_msg_data_returns_none() -> None:
     assert parse_sent_message_ref({"data": {"msg_data": "bad"}}) is None
 
@@ -125,3 +167,29 @@ def test_apifox_documented_msg_data_response_shapes_parse() -> None:
         parsed = parse_sent_message_ref(response)
         assert parsed is not None
         assert parsed.appinfo
+
+
+def test_apifox_send_text_example_preserves_documented_appinfo_form() -> None:
+    fixture = Path(__file__).parent / "fixtures" / "apifox" / "send_text_response.json"
+    response = json.loads(fixture.read_text(encoding="utf-8"))
+    parsed = parse_sent_message_ref(response)
+
+    assert parsed is not None
+    assert parsed.id == "1066172"
+    assert parsed.seq == "7272187"
+    assert parsed.appinfo == "Q0FVUW5ldVRzQVlZOGNiTHIrNkN0ZUFYSUkyOXBjb0w="
+    assert appinfo_values_equivalent(
+        parsed.appinfo,
+        "CAUQneuTsAYY8cbLr+6CteAXII29pcoL",
+    )
+
+
+def test_sanitized_real_outbound_callback_structure_correlates() -> None:
+    fixture = Path(__file__).parent / "fixtures" / "correlation" / "outbound_appinfo.json"
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
+    sent = parse_sent_message_ref(payload["sent_response"])
+
+    assert sent is not None
+    assert sent.id == "LOCAL_A"
+    assert sent.seq == "SEQ_A"
+    assert sent_message_matches_callback(sent, message(**payload["callback"]["data"])) is True

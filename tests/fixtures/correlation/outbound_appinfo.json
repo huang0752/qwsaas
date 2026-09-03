@@ -1,0 +1,32 @@
+{
+  "evidence": "SANITIZED_REAL_STRUCTURE",
+  "sent_response": {
+    "error_code": 0,
+    "error_message": "ok",
+    "data": {
+      "msg_data": {
+        "id": "LOCAL_A",
+        "seq": "SEQ_A",
+        "appinfo": "Q0FVX0FQUElORk9fQQ=="
+      }
+    }
+  },
+  "callback": {
+    "guid": "GUID_A",
+    "notify_type": 11010,
+    "data": {
+      "id": "LOCAL_A",
+      "seq": "SEQ_A",
+      "appinfo": "CAU_APPINFO_A",
+      "sender": "ACCOUNT_A",
+      "receiver": "CONTACT_A",
+      "roomid": "0",
+      "sendtime": 1700000000,
+      "referid": "0",
+      "flag": 0,
+      "send_flag": 1,
+      "msg_type": 2,
+      "content": "SANITIZED_CONTENT"
+    }
+  }
+}

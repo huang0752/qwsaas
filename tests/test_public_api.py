@@ -7,7 +7,7 @@ import qwsaas
 
 
 def test_v040_rc_public_api_does_not_export_v035_callback_fields() -> None:
-    assert version("qwsaas") == "0.4.0rc1"
+    assert version("qwsaas") == "0.4.0rc2"
     field_names = {item.name for item in fields(qwsaas.JuheCallbackMessage)}
     assert "message_id" not in field_names
     assert "conversation_id" not in field_names
@@ -16,6 +16,7 @@ def test_v040_rc_public_api_does_not_export_v035_callback_fields() -> None:
 
 def test_v040_exports_callback_contract() -> None:
     expected = {
+        "appinfo_values_equivalent",
         "logical_message_key",
         "normalize_callback_identity",
         "parse_and_normalize_callback",

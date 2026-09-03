@@ -31,11 +31,11 @@ Private Git usage should pin a tag:
 
 ```toml
 juhe = [
-  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.4.0rc1",
+  "qwsaas @ git+ssh://git@github.com/<private-user-or-org>/qwsaas.git@v0.4.0rc2",
 ]
 ```
 
-`v0.4.0rc1` is intentionally incompatible with `v0.3.x`. Keep existing consumers pinned until they have migrated to the new callback models. A final `v0.4.0` tag is prohibited until the documented real callback matrix passes.
+`v0.4.0rc2` is intentionally incompatible with `v0.3.x`. Keep existing consumers pinned until they have migrated to the new callback models. A final `v0.4.0` tag is prohibited until the documented real callback matrix passes.
 
 ## Environment
 
@@ -198,6 +198,8 @@ For private messages, `sender`, `receiver`, and `current_account_id` are compare
 
 Protocol identifiers remain separate: `appinfo` is global; `id` and `seq` are account-scoped. `logical_message_key()` uses that priority and never falls back to callback fingerprints. `envelope_event_key` and `callback_message_key` are replay fingerprints only.
 
+For outbound correlation, retain the result of `parse_sent_message_ref()` and compare it with a callback using `sent_message_matches_callback()`. Send responses may carry a canonical Base64 UTF-8 representation of `appinfo` while callbacks carry the decoded value. Matching compares the original values and one strict decoded candidate per side; it never overwrites either raw value or falls back to message text, timestamps, `send_flag`, `id`, or `seq`. `appinfo_values_equivalent()` exposes the same rule directly.
+
 Use `parse_sync_messages(records, sync_page_key=...)` for explicitly extracted `/sync/sync_msg` records. Sync results are never wrapped as synthetic 11013 callbacks. The RC rejects 11013 until a complete real batch callback is sanitized and approved.
 
 Attachments are exposed as `message.attachments`. Sensitive fields and raw payloads are excluded from default repr; use `to_safe_dict()` for logging. Each `JuheAttachment` retains the parameters needed by the download helpers.
@@ -218,7 +220,7 @@ Attachments are exposed as `message.attachments`. Sensitive fields and raw paylo
 - Account/instance: `get_profile`, `get_corp_info`, `get_bind_wxinfo`, `set_notify_url`, `set_proxy`, `stop_client`, `restore_client`
 - Contacts/rooms/tags: `sync_contact`, `sync_apply_contact`, `batch_get_userinfo`, `get_room_list`, `batch_get_room_detail`, `sync_room_info`, `sync_label_list`, `create_label`
 - CDN/uploads: `get_cdn_info`, `get_cdn_file`, `c2c_upload`, `c2c_download`, `big_upload`, `big_download`, `wx_download`
-- Callback/enums: `parse_callback_envelope`, `normalize_callback_identity`, `parse_sync_messages`, `logical_message_key`, `NotifyType`, `MsgType`, `MessageFlagField`, `ContactType`, `BigCdnType`
+- Callback/enums: `parse_callback_envelope`, `normalize_callback_identity`, `parse_sync_messages`, `logical_message_key`, `parse_sent_message_ref`, `sent_message_matches_callback`, `appinfo_values_equivalent`, `NotifyType`, `MsgType`, `MessageFlagField`, `ContactType`, `BigCdnType`
 
 ## Tests
 

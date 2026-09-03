@@ -118,6 +118,7 @@ from .instances import (
     update_client,
 )
 from .message_results import (
+    appinfo_values_equivalent,
     logical_message_key,
     parse_sent_message_ref,
     sent_message_matches_callback,
@@ -253,6 +254,7 @@ __all__ = [
     "add_search_wx_work_contact",
     "add_wx_card_contact",
     "agree_contact",
+    "appinfo_values_equivalent",
     "apply_voice_id",
     "batch_get_corpinfo",
     "batch_get_member_detail",

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 from collections.abc import Mapping
 from enum import StrEnum
@@ -13,6 +15,7 @@ from .callback_models import (
     JuheSentMessageRef,
     LogicalMessageKeyFailure,
     LogicalMessageKeySource,
+    ProtocolIdValue,
 )
 
 
@@ -91,11 +94,20 @@ def sent_message_matches_callback(
     sent: JuheSentMessageRef,
     callback: JuheCallbackMessage | JuheMessageProtocolFields,
 ) -> bool:
-    """Return a strong match only for equal, valid global appinfo values."""
+    """Return a strong match only for equivalent, valid global appinfo values."""
     protocol = callback.protocol if isinstance(callback, JuheCallbackMessage) else callback
-    sent_appinfo, _ = _identifier(sent.appinfo)
-    callback_appinfo, _ = _identifier(protocol.appinfo)
-    return sent_appinfo is not None and sent_appinfo == callback_appinfo
+    return appinfo_values_equivalent(sent.appinfo, protocol.appinfo)
+
+
+def appinfo_values_equivalent(left: ProtocolIdValue, right: ProtocolIdValue) -> bool:
+    """Compare raw appinfo values and their strict Base64 UTF-8 candidates.
+
+    The original values remain untouched. Each side is decoded at most once, and
+    only canonical standard Base64 with valid UTF-8 contributes a candidate.
+    """
+    left_candidates = _appinfo_candidates(left)
+    right_candidates = _appinfo_candidates(right)
+    return bool(left_candidates and left_candidates.intersection(right_candidates))
 
 
 def _key(
@@ -135,6 +147,30 @@ def _identifier(value: Any) -> tuple[str | None, _ValueStatus]:
     if not text or text.lower() in {"0", "0.0", "null", "none"}:
         return None, _ValueStatus.MISSING
     return text, _ValueStatus.VALID
+
+
+def _appinfo_candidates(value: ProtocolIdValue) -> frozenset[str]:
+    original, _ = _identifier(value)
+    if original is None:
+        return frozenset()
+
+    candidates = {original}
+    if not isinstance(value, str):
+        return frozenset(candidates)
+
+    try:
+        encoded = original.encode("ascii")
+        decoded_bytes = base64.b64decode(encoded, validate=True)
+        if base64.b64encode(decoded_bytes) != encoded:
+            return frozenset(candidates)
+        decoded = decoded_bytes.decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError, binascii.Error, ValueError):
+        return frozenset(candidates)
+
+    decoded_identifier, _ = _identifier(decoded)
+    if decoded_identifier is not None:
+        candidates.add(decoded_identifier)
+    return frozenset(candidates)
 
 
 def _account_status(value: Any) -> _ValueStatus:

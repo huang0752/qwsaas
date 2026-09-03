@@ -3,19 +3,19 @@
   "error_message": "ok",
   "data": {
     "msg_data": {
-      "id": "LOCAL_TEXT",
-      "seq": "SEQ_TEXT",
+      "id": "1066172",
+      "seq": "7272187",
       "messagetype": 4,
-      "sender": "ACCOUNT_A",
+      "sender": "1688856814580613",
       "receiver": "0",
-      "roomid": "ROOM_A",
+      "roomid": "10006",
       "contenttype": 2,
-      "content": "PUBLIC_EXAMPLE_CONTENT",
+      "content": "CgoIABIGCgR0ZXN0",
       "sendtime": 1711601053,
       "flag": 0,
       "devinfo": "65537",
-      "appinfo": "APPINFO_TEXT",
-      "sendername": "REDACTED",
+      "appinfo": "Q0FVUW5ldVRzQVlZOGNiTHIrNkN0ZUFYSUkyOXBjb0w=",
+      "sendername": "5bCP5Yqp5omL",
       "asid": "0"
     },
     "is_svr_fail": false

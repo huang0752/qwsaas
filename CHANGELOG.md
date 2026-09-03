@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0rc2
+
+- Fixed outbound callback correlation when a send response carries canonical Base64 UTF-8 `appinfo` while the callback carries its decoded value.
+- Added public `appinfo_values_equivalent()` candidate matching without replacing either audited raw value.
+- Kept correlation limited to `appinfo`; message text, timestamps, `send_flag`, `id`, and `seq` are not fallback match keys.
+- Added the official send-text response representation and a sanitized observed send/callback pair as regression fixtures.
+
 ## 0.4.0rc1
 
 - Replaced the v0.3 callback model with separate protocol parsing and account-scoped identity normalization.
